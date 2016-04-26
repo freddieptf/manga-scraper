@@ -1,11 +1,10 @@
 package source
 
 import (
+	utils "GoManga/commons"
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -89,10 +88,11 @@ scanDem:
 
 func getDemChapters(urlPath, mangaName, chapter string) (string, error) {
 	var (
-		urls, imgurls []string
-		doc           *goquery.Document
-		err           error
-		baseUrl       = "http://www.mangareader.net"
+		urls    []string
+		imgUrls []utils.ImgItem
+		doc     *goquery.Document
+		err     error
+		baseUrl = "http://www.mangareader.net"
 	)
 
 	doc, err = goquery.NewDocument(baseUrl + urlPath + "/" + chapter)
@@ -108,35 +108,65 @@ func getDemChapters(urlPath, mangaName, chapter string) (string, error) {
 		urls = append(urls, url)
 	})
 
+	//go off and get the chapter title from the chapter listings
+	titleChan := make(chan string)
+	go func() {
+		var title string
+		d, e := goquery.NewDocument(baseUrl + urlPath)
+		if e != nil {
+			log.Println(e)
+			titleChan <- title
+			return
+		}
+		d.Find("div#chapterlist > table#listing td").Has("div.chico_manga").EachWithBreak(func(i int, s *goquery.Selection) bool {
+			link, _ := s.Find("a").Attr("href")
+			ps := strings.Split(link, "/")
+			if ps[2] == chapter {
+				title = strings.Split(s.Text(), " : ")[1]
+				return false
+			}
+			return true
+		})
+		titleChan <- title
+	}()
+
 	//scrape the manga pages for the image urls
 	fmt.Printf("%v %v: Getting the chapter image urls\n", mangaName, chapter)
-	for i := 0; i < len(urls); i++ {
-		doc, err = goquery.NewDocument(urls[i])
-		if err != nil {
-			return chapter, err
-		}
-		imgURL, _ := doc.Find("div#imgholder img").Attr("src")
-		imgurls = append(imgurls, imgURL)
+
+	imgItemChan := make(chan utils.ImgItem)
+	for i, url := range urls {
+		go func(i int, url string) {
+			doc, err = goquery.NewDocument(url)
+			if err != nil {
+				log.Println(err)
+			}
+			imgURL, _ := doc.Find("div#imgholder img").Attr("src")
+			imgItemChan <- utils.ImgItem{ID: i, URL: imgURL}
+		}(i, url)
+	}
+
+	for i := 0; i < len(urls)-1; i++ {
+		imgUrls = append(imgUrls, <-imgItemChan)
 	}
 
 	home := os.Getenv("HOME")
-	chapterPath := filepath.Join(home, "Manga", "MangaReader", mangaName, chapter)
+	chapterPath := filepath.Join(home, "Manga", "MangaReader", mangaName, chapter+": "+<-titleChan)
 	err = os.MkdirAll(chapterPath, 0655) //0644 gadamit
 	if err != nil {
 		log.Fatal("You might want to run it as SU. Couldn't make directory ", err)
 	}
 	fmt.Printf("Downloading %s %s to %v: \n", mangaName, chapter, chapterPath)
 	ch := make(chan error)
-	for i, url := range imgurls {
-		go func(i int, url string) {
-			err = downloadImg(i, url, chapterPath)
+	for _, item := range imgUrls {
+		go func(imgItem utils.ImgItem) {
+			err = utils.DownloadImg(imgItem.ID, imgItem.URL, chapterPath)
 			if err != nil {
 				ch <- err
 			}
 			ch <- nil
-		}(i, url)
+		}(item)
 	}
-	for range imgurls {
+	for range imgUrls {
 		err := <-ch
 		if err != nil {
 			os.RemoveAll(chapterPath)
@@ -145,23 +175,4 @@ func getDemChapters(urlPath, mangaName, chapter string) (string, error) {
 	}
 
 	return chapter, nil
-}
-
-func downloadImg(page int, url, path string) error {
-	response, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return err
-	}
-
-	imgPath := filepath.Join(path, strconv.Itoa(page)+".jpg")
-	err = ioutil.WriteFile(imgPath, body, 0655)
-	if err != nil {
-		return err
-	}
-	return nil
 }
