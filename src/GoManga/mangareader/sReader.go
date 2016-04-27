@@ -145,7 +145,7 @@ func getDemChapters(urlPath, mangaName, chapter string) (string, error) {
 		}(i, url)
 	}
 
-	for i := 0; i < len(urls)-1; i++ {
+	for i := 0; i < len(urls); i++ {
 		imgUrls = append(imgUrls, <-imgItemChan)
 	}
 
