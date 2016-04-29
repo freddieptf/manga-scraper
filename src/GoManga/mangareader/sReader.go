@@ -151,9 +151,9 @@ func getDemChapters(urlPath, mangaName, chapter string) (string, error) {
 
 	home := os.Getenv("HOME")
 	chapterPath := filepath.Join(home, "Manga", "MangaReader", mangaName, chapter+": "+<-titleChan)
-	err = os.MkdirAll(chapterPath, 0655) //0644 gadamit
+	err = os.MkdirAll(chapterPath, 0777)
 	if err != nil {
-		log.Fatal("You might want to run it as SU. Couldn't make directory ", err)
+		log.Fatal("Couldn't make directory ", err)
 	}
 	fmt.Printf("Downloading %s %s to %v: \n", mangaName, chapter, chapterPath)
 	ch := make(chan error)
