@@ -17,7 +17,7 @@ const (
 	MANGAFOX_URL string = "http://mangafox.com/"
 )
 
-func Get(start, stop int, mangaName string) {
+func Get(chapters []int, mangaName string) {
 	doc, err := goquery.NewDocument(MANGAFOX_URL + "manga/")
 	if err != nil {
 		log.Fatal(err)
@@ -63,23 +63,19 @@ scanDem:
 	}
 	mangaName = matchesNames[id]
 
-	if stop == -1 { //for when we're downloading a single chapter
-		stop = start
-	}
-
 	ch := make(chan int)
-	for i := start; i <= stop; i++ {
-		go func(urlPath, mangaName string, i int) {
-			Chapter, theError := getDemChapters(mangaURL, mangaName, strconv.Itoa(i))
+	for _, chapter := range chapters {
+		go func(urlPath, mangaName string, chapter int) {
+			Chapter, theError := getDemChapters(mangaURL, mangaName, strconv.Itoa(chapter))
 			if theError != nil {
 				fmt.Printf("Download Failed: %v chapter %v (%v)\n", mangaName, Chapter, theError)
 			} else {
 				fmt.Printf("Download done: %v chapter %v\n", mangaName, Chapter)
 			}
-			ch <- i
-		}(mangaURL, mangaName, i)
+			ch <- chapter
+		}(mangaURL, mangaName, chapter)
 	}
-	for i := start; i <= stop; i++ {
+	for range chapters {
 		<-ch
 	}
 

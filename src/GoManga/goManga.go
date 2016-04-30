@@ -6,71 +6,76 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 )
 
 func main() {
-	chapters := os.Args[1:]
+	args := os.Args[1:]
 
-	switch len(chapters) {
-	case 2:
-		start, _ := getStartStop(chapters[1], "")
-		fmt.Println("Default source used: MangaReader.")
-		reader.Get(start, -1, chapters[0])
-	case 3:
-		if strings.Contains(chapters[0], "-mr") || strings.Contains(chapters[0], "-mf") {
-			start, _ := getStartStop(chapters[2], "")
-			if strings.Compare(strings.ToLower(chapters[0]), "-mr") == 0 {
-				reader.Get(start, -1, chapters[1])
-			} else if strings.Compare(strings.ToLower(chapters[0]), "-mf") == 0 {
-				fox.Get(start, -1, chapters[1])
-			}
-		} else {
-			if _, err := strconv.Atoi(chapters[1]); err == nil {
-				start, stop := getStartStop(chapters[1], chapters[2])
-				fmt.Println("Default source used: MangaReader.")
-				reader.Get(start, stop, chapters[0])
+	if len(args) > 1 {
+		if strings.Contains(args[0], "-mr") || strings.Contains(args[0], "-mf") || strings.Contains(args[0], "-") {
+			chapters := getChapterRange(args[2:])
+			if strings.Compare(strings.ToLower(args[0]), "-mr") == 0 {
+				reader.Get(chapters, args[1])
+			} else if strings.Compare(strings.ToLower(args[0]), "-mf") == 0 {
+				fox.Get(chapters, args[1])
 			} else {
-				printUsageFormat()
+				fmt.Printf("%v is not a valid source.\n", args[0])
 			}
-		}
-	case 4:
-		if strings.Compare(strings.ToLower(chapters[0]), "-mr") == 0 {
-			start, stop := getStartStop(chapters[2], chapters[3])
-			reader.Get(start, stop, chapters[1])
-		} else if strings.Compare(strings.ToLower(chapters[0]), "-mf") == 0 {
-			start, stop := getStartStop(chapters[2], chapters[3])
-			fox.Get(start, stop, chapters[1])
 		} else {
-			printUsageFormat()
-			break
+			chapters := getChapterRange(args[1:])
+			fmt.Println("Default source used: MangaReader.")
+			reader.Get(chapters, args[0])
 		}
-	default:
+	} else {
 		printUsageFormat()
 	}
 
 }
 
-func getStartStop(start, stop string) (int, int) {
+func getChapterRange(vals []string) (chapters []int) {
 	var x, y int
 	var err error
-	x, err = strconv.Atoi(start)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if stop != "" {
-		y, err = strconv.Atoi(stop)
-		if err != nil {
-			log.Fatal(err)
+	for _, val := range vals {
+		if strings.Contains(val, "-") {
+			chs := strings.Split(val, "-")
+			x, err = strconv.Atoi(chs[0])
+			if err != nil {
+				log.Printf("%v could not be converted to a chapter.\n", val)
+				log.Fatal(err)
+			}
+			y, err = strconv.Atoi(chs[1])
+			if err != nil {
+				log.Printf("%v could not be converted to a chapter.\n", val)
+				log.Fatal(err)
+			}
+			for i := x; i <= y; i++ {
+				chapters = append(chapters, i)
+			}
+		} else {
+			x, err = strconv.Atoi(val)
+			if err != nil {
+				log.Printf("%v could not be converted to a chapter.\n", val)
+				log.Fatal(err)
+			}
+			chapters = append(chapters, x)
 		}
 	}
-	return x, y
+
+	fmt.Printf("%v\n", chapters)
+
+	return chapters
 }
 
 func printUsageFormat() {
-	fmt.Printf("\nUsage Format: \n\t-source 'Manga Name' start stop(optional)\n\n")
+	fmt.Printf("\nUsage Format: \n\t-source 'Manga Name' chapters\n\n")
 	fmt.Printf("sources: \n\t-mr for mangareader \n\t-mf for mangafox\n\n")
-	fmt.Println("To fetch Bleach, chapter 1 to 50, from mangareader: ")
-	fmt.Printf("\t sudo ./GoManga -mr 'Bleach' 1 50\n\n")
+	fmt.Println("To fetch Bleach, chapters 1 to 20 and chapter 54, from mangafox: ")
+	if runtime.GOOS == "linux" {
+		fmt.Printf("\t ./GoManga -mf 'Bleach' 1-20 54\n\n")
+	} else if runtime.GOOS == "windows" {
+		fmt.Printf("\t GoManga.exe -mf 'Bleach' 1-20 54\n\n")
+	}
 }

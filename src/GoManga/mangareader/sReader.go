@@ -14,7 +14,7 @@ import (
 )
 
 //Get : get chapters
-func Get(start, stop int, mangaName string) {
+func Get(chapters []int, mangaName string) {
 	// l, _ := os.Open("list.html")
 	doc, err := goquery.NewDocument("http://www.mangareader.net/alphabetical")
 	// defer l.Close()
@@ -64,23 +64,19 @@ scanDem:
 	}
 	mangaName = matchesNames[id]
 
-	if stop == -1 { //for when we're downloading a single chapter
-		stop = start
-	}
-
 	ch := make(chan int)
-	for i := start; i <= stop; i++ {
-		go func(urlPath, mangaName string, i int) {
-			Chapter, theError := getDemChapters(urlPath, mangaName, strconv.Itoa(i))
+	for _, chapter := range chapters {
+		go func(urlPath, mangaName string, chapter int) {
+			Chapter, theError := getDemChapters(urlPath, mangaName, strconv.Itoa(chapter))
 			if theError != nil {
 				fmt.Printf("Download Failed: %v chapter %v (%v)\n", mangaName, Chapter, theError)
 			} else {
 				fmt.Printf("Download done: %v chapter %v\n", mangaName, Chapter)
 			}
-			ch <- i
-		}(urlPath, mangaName, i)
+			ch <- chapter
+		}(urlPath, mangaName, chapter)
 	}
-	for i := start; i <= stop; i++ {
+	for range chapters {
 		<-ch
 	}
 
