@@ -1,8 +1,8 @@
 package main
 
 import (
-	fox "GoManga/mangafox"
-	reader "GoManga/mangareader"
+	s "GoManga/msources"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -13,21 +13,33 @@ import (
 
 func main() {
 	args := os.Args[1:]
+	var download s.MangaDownload
+
+	foxFlag := flag.Bool("mf", false, "use mangafox as source")
+	readerFlag := flag.Bool("mr", false, "use mangaReader as source")
+	flag.Parse()
 
 	if len(args) > 1 {
-		if strings.Contains(args[0], "-mr") || strings.Contains(args[0], "-mf") || strings.Contains(args[0], "-") {
-			chapters := getChapterRange(args[2:])
-			if strings.Compare(strings.ToLower(args[0]), "-mr") == 0 {
-				reader.Get(chapters, args[1])
-			} else if strings.Compare(strings.ToLower(args[0]), "-mf") == 0 {
-				fox.Get(chapters, args[1])
+		if *foxFlag || *readerFlag {
+			download = s.MangaDownload{
+				Chapters:  getChapterRange(args[2:]),
+				MangaName: &args[1],
+			}
+			if *readerFlag {
+				download.GetFromReader()
+			} else if *foxFlag {
+				download.GetFromFox()
 			} else {
 				fmt.Printf("%v is not a valid source.\n", args[0])
 			}
 		} else {
-			chapters := getChapterRange(args[1:])
+			download = s.MangaDownload{
+				Chapters:  getChapterRange(args[1:]),
+				MangaName: &args[0],
+			}
 			fmt.Println("Default source used: MangaReader.")
-			reader.Get(chapters, args[0])
+			download.GetFromReader()
+
 		}
 	} else {
 		printUsageFormat()
@@ -35,9 +47,10 @@ func main() {
 
 }
 
-func getChapterRange(vals []string) (chapters []int) {
+func getChapterRange(vals []string) *[]int {
 	var x, y int
 	var err error
+	var chapters []int
 	for _, val := range vals {
 		if strings.Contains(val, "-") {
 			chs := strings.Split(val, "-")
@@ -66,7 +79,7 @@ func getChapterRange(vals []string) (chapters []int) {
 
 	fmt.Printf("%v\n", chapters)
 
-	return chapters
+	return &chapters
 }
 
 func printUsageFormat() {
