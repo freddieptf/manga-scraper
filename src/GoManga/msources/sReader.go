@@ -9,10 +9,11 @@ import (
 	"strconv"
 	"strings"
 
+	"gopkg.in/go-playground/pool.v1"
+
 	"github.com/PuerkitoBio/goquery"
 )
 
-//Get : get chapters
 func (d *MangaDownload) GetFromReader() {
 	doc, err := goquery.NewDocument("http://www.mangareader.net/alphabetical")
 	if err != nil {
@@ -60,24 +61,34 @@ scanDem:
 	}
 	*d.MangaName = matchesNames[id]
 
-	ch := make(chan int)
-	for _, chapter := range *d.Chapters {
-		go func(urlPath, mangaName string, chapter int) {
-			Chapter, theError := getChapterFromReader(urlPath, mangaName, strconv.Itoa(chapter))
-			if theError != nil {
-				fmt.Printf("Download Failed: %v chapter %v (%v)\n", mangaName, Chapter, theError)
-			} else {
-				fmt.Printf("Download done: %v chapter %v\n", mangaName, Chapter)
-			}
-			ch <- chapter
-		}(urlPath, *d.MangaName, chapter)
+	p := pool.NewPool(30, len(*d.Chapters)) //goroutine pool
+
+	fn := func(job *pool.Job) { //job
+		ch, e := getChapterFromReader(job.Params()[0].(string), job.Params()[1].(string), job.Params()[2].(string))
+		if e != nil {
+			fmt.Printf("Download Failed: %v chapter %v (%v)\n", job.Params()[1].(string), job.Params()[2].(string), e)
+			return
+		}
+		job.Return(job.Params()[1].(string) + " " + ch)
 	}
-	for range *d.Chapters {
-		<-ch
+
+	for _, chapter := range *d.Chapters {
+		p.Queue(fn, urlPath, *d.MangaName, strconv.Itoa(chapter)) //queue the jobs
+	}
+
+	for result := range p.Results() { //receive results
+		err, ok := result.(*pool.ErrRecovery)
+		if ok { // there was some sort of panic that
+			fmt.Println(err) // was recovered, in this scenario
+			return
+		}
+		res := result.(string)
+		fmt.Println("Download Successful: ", res)
 	}
 
 }
 
+//@TODO If a chapter doesn't exist onsite, return an error.
 func getChapterFromReader(mangaPath, mangaName, chapter string) (string, error) {
 	var (
 		urls    []string
