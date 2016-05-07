@@ -14,7 +14,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-func (d *MangaDownload) GetFromReader() {
+func (d *MangaDownload) GetFromReader(n int) {
 	doc, err := goquery.NewDocument("http://www.mangareader.net/alphabetical")
 	if err != nil {
 		log.Fatal(err)
@@ -61,7 +61,7 @@ scanDem:
 	}
 	*d.MangaName = matchesNames[id]
 
-	p := pool.NewPool(30, len(*d.Chapters)) //goroutine pool
+	p := pool.NewPool(n, len(*d.Chapters)) //goroutine pool
 
 	fn := func(job *pool.Job) { //job
 		ch, e := getChapterFromReader(job.Params()[0].(string), job.Params()[1].(string), job.Params()[2].(string))

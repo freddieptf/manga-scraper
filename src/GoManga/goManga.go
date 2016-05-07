@@ -14,33 +14,52 @@ import (
 func main() {
 	args := os.Args[1:]
 	var download s.MangaDownload
+	n := 35 //default num of maxActiveDownloads
 
 	foxFlag := flag.Bool("mf", false, "use mangafox as source")
 	readerFlag := flag.Bool("mr", false, "use mangaReader as source")
+	maxActiveDownloads := flag.Int("n", -1, "Define the maximum number of concurrent downloads")
 	flag.Parse()
 
 	if len(args) > 1 {
-		if *foxFlag || *readerFlag {
-			download = s.MangaDownload{
-				Chapters:  getChapterRange(args[2:]),
-				MangaName: &args[1],
-			}
-			if *readerFlag {
-				download.GetFromReader()
-			} else if *foxFlag {
-				download.GetFromFox()
+		switch {
+		case *foxFlag, *readerFlag:
+			if *maxActiveDownloads != -1 {
+				download = s.MangaDownload{
+					Chapters:  getChapterRange(args[3:]),
+					MangaName: &args[2],
+				}
+				n = *maxActiveDownloads
 			} else {
-				fmt.Printf("%v is not a valid source.\n", args[0])
+				download = s.MangaDownload{
+					Chapters:  getChapterRange(args[2:]),
+					MangaName: &args[1],
+				}
 			}
-		} else {
-			download = s.MangaDownload{
-				Chapters:  getChapterRange(args[1:]),
-				MangaName: &args[0],
+
+			if *readerFlag {
+				download.GetFromReader(n)
+			} else if *foxFlag {
+				download.GetFromFox(n)
+			}
+
+		default:
+			if *maxActiveDownloads != -1 {
+				download = s.MangaDownload{
+					Chapters:  getChapterRange(args[2:]),
+					MangaName: &args[1],
+				}
+				n = *maxActiveDownloads
+			} else {
+				download = s.MangaDownload{
+					Chapters:  getChapterRange(args[1:]),
+					MangaName: &args[0],
+				}
 			}
 			fmt.Println("Default source used: MangaReader.")
-			download.GetFromReader()
-
+			download.GetFromReader(n)
 		}
+
 	} else {
 		printUsageFormat()
 	}
