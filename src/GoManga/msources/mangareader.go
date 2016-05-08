@@ -16,29 +16,33 @@ import (
 
 const mangareaderURL = "http://www.mangareader.net"
 
+type searchResult struct {
+	manga, mangaID string
+}
+
+//GetFromReader get manga chapters from mangareader
 func (d *MangaDownload) GetFromReader(n int) {
 	doc, err := goquery.NewDocument(mangareaderURL + "/alphabetical")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var matches = make(map[int]string)
-	var matchesNames = make(map[int]string)
+	var results = make(map[int]searchResult)
 	//find possible matches in the site's manga list for the mangaName provided;
 	doc.Find("ul.series_alpha > li > a").Each(func(i int, s *goquery.Selection) {
 		if strings.Contains(strings.ToLower(s.Text()), strings.ToLower(*d.MangaName)) {
-			matches[i], _ = s.Attr("href")
-			matchesNames[i] = s.Text()
+			mid, _ := s.Attr("href")
+			results[i] = searchResult{s.Text(), mid}
 		}
 	})
 
-	if len(matches) <= 0 {
+	if len(results) <= 0 {
 		log.Fatal(*d.MangaName + " could not be found")
 	}
 
 	fmt.Printf("Id \t Manga\n")
-	for i, m := range matches {
-		fmt.Printf("%d \t %s\n", i, m)
+	for i, m := range results {
+		fmt.Printf("%d \t %s\n", i, m.manga)
 	}
 
 	//get the correct id from the user incase of multiple match results
@@ -56,12 +60,13 @@ scanDem:
 	}
 
 	//get the matching id
-	urlPath, exists := matches[id]
+	match, exists := results[id]
 	if !exists {
 		fmt.Printf("Insert one of the Ids in the results, please: ")
 		goto scanDem
 	}
-	*d.MangaName = matchesNames[id]
+	urlPath := match.mangaID
+	*d.MangaName = match.manga
 
 	p := pool.NewPool(n, len(*d.Chapters)) //goroutine pool
 
@@ -69,14 +74,14 @@ scanDem:
 		e := job.Params()[0].(*chapterDownload).getChapterFromReader()
 		if e != nil {
 			fmt.Printf("Download Failed: %v chapter %v (%v)\n",
-				job.Params()[0].(chapterDownload).manga, job.Params()[0].(chapterDownload).chapter, e)
+				job.Params()[0].(*chapterDownload).manga, job.Params()[0].(*chapterDownload).chapter, e)
 			return
 		}
-		job.Return(job.Params()[0].(chapterDownload).manga + " chapter " + job.Params()[0].(chapterDownload).chapter)
+		job.Return(job.Params()[0].(*chapterDownload).manga + " chapter " + job.Params()[0].(*chapterDownload).chapter)
 	}
 
 	for _, chapter := range *d.Chapters {
-		p.Queue(fn, chapterDownload{
+		p.Queue(fn, &chapterDownload{
 			url:     urlPath, //we actually pass the manga_id from the path here and build the url later in getChapterFromReader
 			manga:   *d.MangaName,
 			chapter: strconv.Itoa(chapter),

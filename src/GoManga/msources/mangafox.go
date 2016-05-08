@@ -2,6 +2,7 @@ package msources
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -17,6 +18,7 @@ const (
 	mangafoxURL string = "http://mangafox.com/"
 )
 
+//GetFromFox gets manga chapters from mangafox
 func (d *MangaDownload) GetFromFox(n int) {
 	doc, err := goquery.NewDocument(mangafoxURL + "manga/")
 	if err != nil {
@@ -24,22 +26,22 @@ func (d *MangaDownload) GetFromFox(n int) {
 		return
 	}
 
-	var matches = make(map[int]string)
-	var matchesNames = make(map[int]string)
+	var results = make(map[int]searchResult)
+
 	doc.Find("div.manga_list li > a").Each(func(i int, s *goquery.Selection) {
 		if strings.Contains(strings.ToLower(s.Text()), strings.ToLower(*d.MangaName)) {
-			matches[i], _ = s.Attr("href")
-			matchesNames[i] = s.Text()
+			mid, _ := s.Attr("href")
+			results[i] = searchResult{s.Text(), mid}
 		}
 	})
 
-	if len(matches) <= 0 {
+	if len(results) <= 0 {
 		log.Fatal(*d.MangaName + " could not be found")
 	}
 
 	fmt.Printf("Id \t Manga\n")
-	for i, m := range matchesNames {
-		fmt.Printf("%d \t %s\n", i, m)
+	for i, m := range results {
+		fmt.Printf("%d \t %s\n", i, m.manga)
 	}
 
 	myScanner := bufio.NewScanner(os.Stdin)
@@ -56,25 +58,32 @@ scanDem:
 	}
 
 	//get the matching id
-	mangaURL, exists := matches[id] // mangafox has the manga url also in the catalogue so we use that
+	match, exists := results[id] // mangafox has the manga url also in the catalogue so we use that
 	if !exists {
 		fmt.Printf("Insert one of the Ids in the results, please: ")
 		goto scanDem
 	}
-	*d.MangaName = matchesNames[id]
+	mangaURL := match.mangaID
+	*d.MangaName = match.manga
 
 	p := pool.NewPool(n, len(*d.Chapters))
+
 	fn := func(job *pool.Job) {
-		ch, e := getChapterFromFox(job.Params()[0].(string), job.Params()[1].(string), job.Params()[2].(string))
+		e := job.Params()[0].(*chapterDownload).getChapterFromFox()
 		if e != nil {
-			fmt.Printf("Download Failed: %v chapter %v (%v)\n", job.Params()[1].(string), job.Params()[2].(string), e)
+			fmt.Printf("Download Failed: %v chapter %v (%v)\n",
+				job.Params()[0].(*chapterDownload).manga, job.Params()[0].(*chapterDownload).chapter, e)
 			return
 		}
-		job.Return(job.Params()[1].(string) + " " + ch)
+		job.Return(job.Params()[0].(*chapterDownload).manga + " " + job.Params()[0].(*chapterDownload).chapter)
 	}
 
 	for _, chapter := range *d.Chapters {
-		p.Queue(fn, mangaURL, *d.MangaName, strconv.Itoa(chapter))
+		p.Queue(fn, &chapterDownload{
+			url:     mangaURL,
+			manga:   *d.MangaName,
+			chapter: strconv.Itoa(chapter),
+		})
 	}
 
 	for result := range p.Results() {
@@ -89,10 +98,15 @@ scanDem:
 
 }
 
-func getChapterFromFox(mangaURL, mangaName, chapter string) (string, error) {
-	doc, err := goquery.NewDocument(mangaURL) //open the manga's page on mangafox
+//GetVolumeFromFox gets manga volumes from Mangafox
+func (d *MangaDownload) GetVolumeFromFox(n int) {
+	fmt.Println(d)
+}
+
+func (c *chapterDownload) getChapterFromFox() error {
+	doc, err := goquery.NewDocument(c.url) //open the manga's page on mangafox
 	if err != nil {
-		return chapter, err
+		return err
 	}
 	var page1 string
 	name, _ := doc.Find("div.cover img").Attr("alt") //get the name of the manga for uniformity when creating it's download dir
@@ -101,7 +115,7 @@ func getChapterFromFox(mangaURL, mangaName, chapter string) (string, error) {
 
 	doc.Find("ul.chlist li").EachWithBreak(func(i int, s *goquery.Selection) bool {
 		chID := strings.TrimPrefix(s.Find("a").Text(), name+" ")
-		if chapter == chID { // search for the matching chapter in the manga's chapter catalogue
+		if c.chapter == chID { // search for the matching chapter in the manga's chapter catalogue
 			page1, _ = s.Find("a").Last().Attr("href")
 			return false
 		}
@@ -111,7 +125,7 @@ func getChapterFromFox(mangaURL, mangaName, chapter string) (string, error) {
 	baseURL := strings.TrimSuffix(page1, "1.html")
 	doc, err = goquery.NewDocument(baseURL) //get the chapter's page
 	if err != nil {
-		return chapter, err
+		return err
 	}
 
 	titleChan := make(chan string)
@@ -126,10 +140,10 @@ func getChapterFromFox(mangaURL, mangaName, chapter string) (string, error) {
 	})
 
 	if len(urls) == 0 {
-		return "OOPS. CAN'T GET DIS: " + chapter, nil
+		return errors.New("OOPS. CAN'T GET DIS: " + c.chapter)
 	}
 
-	fmt.Printf("%v %v: Getting the chapter image urls\n", mangaName, chapter)
+	fmt.Printf("%v %v: Getting the chapter image urls\n", c.manga, c.chapter)
 	imgItemChan := make(chan imgItem)
 	for i, url := range urls[:len(urls)-1] {
 		go func(i int, url string) {
@@ -147,12 +161,12 @@ func getChapterFromFox(mangaURL, mangaName, chapter string) (string, error) {
 		imgUrls = append(imgUrls, <-imgItemChan) //get dem image urls
 	}
 
-	chapterPath := filepath.Join(os.Getenv("HOME"), "Manga", "MangaFox", mangaName, chapter+": "+<-titleChan)
+	chapterPath := filepath.Join(os.Getenv("HOME"), "Manga", "MangaFox", c.manga, c.chapter+": "+<-titleChan)
 	err = os.MkdirAll(chapterPath, 0777)
 	if err != nil {
 		log.Fatal("Couldn't make directory ", err)
 	}
-	fmt.Printf("Downloading %s %s to %v: \n", mangaName, chapter, chapterPath)
+	fmt.Printf("Downloading %s %s to %v: \n", c.manga, c.chapter, chapterPath)
 	ch := make(chan error)
 	for _, item := range imgUrls {
 		go func(item imgItem) {
@@ -168,7 +182,7 @@ func getChapterFromFox(mangaURL, mangaName, chapter string) (string, error) {
 		err := <-ch
 		if err != nil {
 			os.RemoveAll(chapterPath) //bad but for now...
-			return chapter, err
+			return err
 		}
 	}
 
@@ -177,5 +191,5 @@ func getChapterFromFox(mangaURL, mangaName, chapter string) (string, error) {
 		fmt.Printf("Couldn't make chapter cbz: %v", err)
 	}
 
-	return chapter, nil
+	return nil
 }

@@ -2,75 +2,53 @@ package main
 
 import (
 	s "GoManga/msources"
-	"flag"
 	"fmt"
 	"log"
-	"os"
-	"runtime"
 	"strconv"
 	"strings"
+
+	"gopkg.in/alecthomas/kingpin.v2"
+)
+
+var (
+	foxFlag            = kingpin.Flag("mf", "use mangafox as source").Bool()
+	readerFlag         = kingpin.Flag("mr", "use mangaReader as source").Bool()
+	v                  = kingpin.Flag("vlm", "use when you want to download a volume(s)").Bool()
+	maxActiveDownloads = kingpin.Flag("n", "set max number of concurrent downloads").Int()
+	manga              = kingpin.Arg("manga", "The name of the manga").String()
+	args               = kingpin.Arg("arguments",
+		"chapters (volumes if --vlm is set) to download. Example format: 1 3 5-7 67 10-14").Strings()
 )
 
 func main() {
-	args := os.Args[1:]
-	var download s.MangaDownload
+	kingpin.Parse()
 	n := 35 //default num of maxActiveDownloads
+	if *maxActiveDownloads != 0 {
+		n = *maxActiveDownloads
+	}
 
-	foxFlag := flag.Bool("mf", false, "use mangafox as source")
-	readerFlag := flag.Bool("mr", false, "use mangaReader as source")
-	maxActiveDownloads := flag.Int("n", -1, "Define the maximum number of concurrent downloads")
-	flag.Parse()
+	download := s.MangaDownload{
+		Chapters:  getRange(args),
+		MangaName: manga,
+	}
 
-	if len(args) > 1 {
-		switch {
-		case *foxFlag, *readerFlag:
-			if *maxActiveDownloads != -1 {
-				download = s.MangaDownload{
-					Chapters:  getChapterRange(args[3:]),
-					MangaName: &args[2],
-				}
-				n = *maxActiveDownloads
-			} else {
-				download = s.MangaDownload{
-					Chapters:  getChapterRange(args[2:]),
-					MangaName: &args[1],
-				}
-			}
-
-			if *readerFlag {
-				download.GetFromReader(n)
-			} else if *foxFlag {
-				download.GetFromFox(n)
-			}
-
-		default:
-			if *maxActiveDownloads != -1 {
-				download = s.MangaDownload{
-					Chapters:  getChapterRange(args[2:]),
-					MangaName: &args[1],
-				}
-				n = *maxActiveDownloads
-			} else {
-				download = s.MangaDownload{
-					Chapters:  getChapterRange(args[1:]),
-					MangaName: &args[0],
-				}
-			}
-			fmt.Println("Default source used: MangaReader.")
-			download.GetFromReader(n)
-		}
-
-	} else {
-		printUsageFormat()
+	switch {
+	case *foxFlag:
+		download.GetFromFox(n)
+	case *readerFlag:
+		download.GetFromReader(n)
+	default:
+		fmt.Println("Default source used: MangaReader.")
+		download.GetFromReader(n)
 	}
 
 }
 
-func getChapterRange(vals []string) *[]int {
+func getRange(vals *[]string) *[]int {
 	var x, y int
 	var err error
 	var chapters []int
-	for _, val := range vals {
+	for _, val := range *vals {
 		if strings.Contains(val, "-") {
 			chs := strings.Split(val, "-")
 			x, err = strconv.Atoi(chs[0])
@@ -99,15 +77,4 @@ func getChapterRange(vals []string) *[]int {
 	fmt.Printf("%v\n", chapters)
 
 	return &chapters
-}
-
-func printUsageFormat() {
-	fmt.Printf("\nUsage Format: \n\t-source 'Manga Name' chapters\n\n")
-	fmt.Printf("sources: \n\t-mr for mangareader \n\t-mf for mangafox\n\n")
-	fmt.Println("To fetch Bleach, chapters 1 to 20 and chapter 54, from mangafox: ")
-	if runtime.GOOS == "linux" {
-		fmt.Printf("\t ./GoManga -mf 'Bleach' 1-20 54\n\n")
-	} else if runtime.GOOS == "windows" {
-		fmt.Printf("\t GoManga.exe -mf 'Bleach' 1-20 54\n\n")
-	}
 }
