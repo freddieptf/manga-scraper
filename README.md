@@ -49,6 +49,6 @@ Downloads are kept in the users home directory in the format `Manga/{source}/{ma
  - [x] Add support for unordered chapter downloads, `1 2 45 22 56`
  - Fix failed downloads
  - Support updating all the mangas in the manga directory to the latest chapters
- - Support volume download
+ - Support volume download(mangafox)
  - [x] Threadpoolish implementation for downloads
- - Download into `.cbz` format or `.zip`
+ - [x] Download into `.cbz` format
