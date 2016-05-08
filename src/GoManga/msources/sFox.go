@@ -129,10 +129,15 @@ func getChapterFromFox(mangaURL, mangaName, chapter string) (string, error) {
 		return "OOPS. CAN'T GET DIS: " + chapter, nil
 	}
 
+	fmt.Printf("%v %v: Getting the chapter image urls\n", mangaName, chapter)
 	imgItemChan := make(chan imgItem)
 	for i, url := range urls[:len(urls)-1] {
 		go func(i int, url string) {
-			doc, _ = goquery.NewDocument(url)                     //open a chapter page
+			doc, err = goquery.NewDocument(url) //open a chapter page
+			if err != nil {
+				log.Println(err)
+				return
+			}
 			imgURL, _ := doc.Find("div.read_img img").Attr("src") //get the image url
 			imgItemChan <- imgItem{URL: imgURL, ID: i}            //send it
 		}(i, url)
@@ -165,6 +170,11 @@ func getChapterFromFox(mangaURL, mangaName, chapter string) (string, error) {
 			os.RemoveAll(chapterPath) //bad but for now...
 			return chapter, err
 		}
+	}
+
+	err = cbzify(chapterPath)
+	if err != nil {
+		fmt.Printf("Couldn't make chapter cbz: %v", err)
 	}
 
 	return chapter, nil

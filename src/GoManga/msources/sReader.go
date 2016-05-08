@@ -104,7 +104,6 @@ func getChapterFromReader(mangaPath, mangaName, chapter string) (string, error) 
 	}
 
 	//get the manga page urls
-	fmt.Printf("%v %v: Getting the Manga page urls\n", mangaName, chapter)
 	doc.Find("div#selectpage > select#pageMenu > option").Each(func(i int, s *goquery.Selection) {
 		url, _ := s.Attr("value")
 		url = baseURL + url
@@ -142,6 +141,7 @@ func getChapterFromReader(mangaPath, mangaName, chapter string) (string, error) 
 			doc, err = goquery.NewDocument(url)
 			if err != nil {
 				log.Println(err)
+				return
 			}
 			imgURL, _ := doc.Find("div#imgholder img").Attr("src")
 			imgItemChan <- imgItem{ID: i, URL: imgURL}
@@ -151,13 +151,13 @@ func getChapterFromReader(mangaPath, mangaName, chapter string) (string, error) 
 	for i := 0; i < len(urls); i++ {
 		imgUrls = append(imgUrls, <-imgItemChan)
 	}
-
-	chapterPath := filepath.Join(os.Getenv("HOME"), "Manga", "MangaReader", mangaName, chapter+": "+<-titleChan)
+	chapterTitle := <-titleChan
+	chapterPath := filepath.Join(os.Getenv("HOME"), "Manga", "MangaReader", mangaName, chapter+": "+chapterTitle)
 	err = os.MkdirAll(chapterPath, 0777)
 	if err != nil {
 		log.Fatal("Couldn't make directory ", err)
 	}
-	fmt.Printf("Downloading %s %s to %v: \n", mangaName, chapter, chapterPath)
+	fmt.Printf("Downloading %s %s to %v \n", mangaName, chapter, chapterPath)
 	ch := make(chan error)
 	for _, item := range imgUrls {
 		go func(item imgItem) {
@@ -176,5 +176,9 @@ func getChapterFromReader(mangaPath, mangaName, chapter string) (string, error) 
 		}
 	}
 
-	return chapter, nil
+	err = cbzify(chapterPath)
+	if err != nil {
+		fmt.Printf("Couldn't make chapter cbz: %v", err)
+	}
+	return chapterTitle, nil
 }
