@@ -2,6 +2,5 @@ package msources
 
 type MangaDownload struct {
 	MangaName *string
-	Chapters  *[]int //chapters to download
-	Volumes   *[]int
+	Args      *[]int //chapters||volumes to download
 }

@@ -68,7 +68,7 @@ scanDem:
 	urlPath := match.mangaID
 	*d.MangaName = match.manga
 
-	p := pool.NewPool(n, len(*d.Chapters)) //goroutine pool
+	p := pool.NewPool(n, len(*d.Args)) //goroutine pool
 
 	fn := func(job *pool.Job) { //job
 		e := job.Params()[0].(*chapterDownload).getChapterFromReader()
@@ -80,7 +80,7 @@ scanDem:
 		job.Return(job.Params()[0].(*chapterDownload).manga + " chapter " + job.Params()[0].(*chapterDownload).chapter)
 	}
 
-	for _, chapter := range *d.Chapters {
+	for _, chapter := range *d.Args {
 		p.Queue(fn, &chapterDownload{
 			url:     urlPath, //we actually pass the manga_id from the path here and build the url later in getChapterFromReader
 			manga:   *d.MangaName,
