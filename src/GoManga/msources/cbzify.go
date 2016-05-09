@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 )
 
@@ -21,13 +22,19 @@ func cbzify(folderPath string) error {
 				return err
 			}
 
+			relativeFilePath, err := filepath.Rel(folderPath, filePath)
+			if err != nil {
+				return err
+			}
+			archivePath := path.Join(filepath.SplitList(relativeFilePath)...)
+
 			file, err := os.Open(filePath)
 			if err != nil {
 				return err
 			}
 			defer file.Close()
 
-			zipFileWriter, err := zipWriter.Create(filePath)
+			zipFileWriter, err := zipWriter.Create(archivePath)
 			if err != nil {
 				return err
 			}
@@ -50,7 +57,7 @@ func cbzify(folderPath string) error {
 
 	err = os.RemoveAll(folderPath)
 	if err != nil {
-		fmt.Printf("Couldn't %v after creating cbz\n", folderPath)
+		fmt.Printf("Couldn't delete %v after creating cbz\n", folderPath)
 		return nil
 	}
 
