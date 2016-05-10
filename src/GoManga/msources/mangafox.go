@@ -20,7 +20,7 @@ const (
 
 type volume struct {
 	volume   string
-	chapters *[]int
+	chapters []string
 }
 
 //GetFromFox gets manga chapters from mangafox
@@ -75,16 +75,22 @@ func (d *MangaDownload) GetVolumeFromFox(n int) {
 	}
 
 	var volumes []volume
-	doc.Find("h3.volume").Each(func(i int, s *goquery.Selection) {
+	doc.Find("div.slide").Each(func(i int, s *goquery.Selection) {
 		for _, v := range *d.Args {
-			st := strings.Split(s.Text(), " Chapter ")
+			st := strings.Split(s.Find("h3.volume").Text(), " Chapter ")
 			vi, err := strconv.Atoi(strings.Split(st[0], "Volume ")[1])
 			if err != nil {
 				return
 			}
 			if v == vi {
-				volumes = append(volumes, volume{st[0],
-					GetRange(&[]string{strings.TrimSpace(strings.Replace(st[1], " ", "", -1))})})
+				var vol volume
+				vol.volume = st[0]
+				as := s.Next().First().Find("li a.tips")
+				for i := as.Size() - 1; i >= 0; i-- { //get oldest chapter to newest
+					a := as.Eq(i)
+					vol.chapters = append(vol.chapters, strings.Split(a.Text(), *d.MangaName+" ")[1])
+				}
+				volumes = append(volumes, vol)
 			}
 		}
 	})
@@ -102,21 +108,21 @@ func (d *MangaDownload) GetVolumeFromFox(n int) {
 	}
 
 	for i := len(volumes) - 1; i >= 0; i-- { //reverse the order since the older volumes are at the end...older first
-		for _, chapter := range *volumes[i].chapters {
+		for _, chapter := range volumes[i].chapters {
 			p.Queue(fn, &chapterDownload{
 				manga:   *d.MangaName,
-				chapter: strconv.Itoa(chapter),
+				chapter: chapter,
 				volume:  volumes[i].volume,
 			}, doc)
 		}
 	}
 
 	for result := range p.Results() {
-		err, ok := result.(*pool.ErrRecovery)
-		if ok { // there was some sort of panic that
-			log.Println(err) // was recovered, in this scenario
-			return
-		}
+		// err, ok := result.(*pool.ErrRecovery)
+		// if ok { // there was some sort of panic that
+		// 	log.Println(err) // was recovered, in this scenario
+		// 	return
+		// }
 		res := result.(string)
 		fmt.Println("Download Successful: ", res)
 	}
