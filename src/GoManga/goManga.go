@@ -11,6 +11,7 @@ var (
 	foxFlag            = kingpin.Flag("mf", "use mangafox as source").Bool()
 	readerFlag         = kingpin.Flag("mr", "use mangaReader as source").Bool()
 	vlm                = kingpin.Flag("vlm", "use when you want to download a volume(s)").Bool()
+	update             = kingpin.Flag("update", "use to update the manga in your lib to the latest chapter").Bool()
 	maxActiveDownloads = kingpin.Flag("n", "set max number of concurrent downloads").Int()
 	manga              = kingpin.Arg("manga", "The name of the manga").String()
 	args               = kingpin.Arg("arguments",
@@ -22,6 +23,11 @@ func main() {
 	n := 35 //default num of maxActiveDownloads
 	if *maxActiveDownloads != 0 {
 		n = *maxActiveDownloads
+	}
+
+	if len(*args) <= 0 && !*update {
+		fmt.Println("See GoManga --help for usage tips")
+		return
 	}
 
 	download := s.MangaDownload{
@@ -38,6 +44,8 @@ func main() {
 		}
 	case *readerFlag:
 		download.GetFromReader(n)
+	case *update:
+		s.UpdateMangaLib()
 	default:
 		fmt.Println("Default source used: MangaReader.")
 		download.GetFromReader(n)
