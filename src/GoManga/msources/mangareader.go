@@ -2,6 +2,7 @@ package msources
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -22,22 +23,9 @@ type searchResult struct {
 
 //GetFromReader get manga chapters from mangareader
 func (d *MangaDownload) GetFromReader(n int) {
-	doc, err := goquery.NewDocument(mangareaderURL + "/alphabetical")
+	results, err := searchReader(d.MangaName)
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	var results = make(map[int]searchResult)
-	//find possible matches in the site's manga list for the mangaName provided;
-	doc.Find("ul.series_alpha > li > a").Each(func(i int, s *goquery.Selection) {
-		if strings.Contains(strings.ToLower(s.Text()), strings.ToLower(*d.MangaName)) {
-			mid, _ := s.Attr("href")
-			results[i] = searchResult{s.Text(), mid}
-		}
-	})
-
-	if len(results) <= 0 {
-		log.Fatal(*d.MangaName + " could not be found")
 	}
 
 	fmt.Printf("Id \t Manga\n")
@@ -195,4 +183,25 @@ func (c *chapterDownload) getChapterFromReader() error {
 	}
 
 	return nil
+}
+
+func searchReader(manga *string) (map[int]searchResult, error) {
+	doc, err := goquery.NewDocument(mangareaderURL + "/alphabetical")
+	if err != nil {
+		return nil, err
+	}
+	var results = make(map[int]searchResult)
+	//find possible matches in the site's manga list for the mangaName provided;
+	doc.Find("ul.series_alpha > li > a").Each(func(i int, s *goquery.Selection) {
+		if strings.Contains(strings.ToLower(s.Text()), strings.ToLower(*manga)) {
+			mid, _ := s.Attr("href")
+			results[i] = searchResult{s.Text(), mid}
+		}
+	})
+
+	if len(results) <= 0 {
+		return nil, errors.New("found Zero results. Exiting")
+	}
+
+	return results, nil
 }
