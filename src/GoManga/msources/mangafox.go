@@ -9,13 +9,14 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/PuerkitoBio/goquery"
 	"gopkg.in/go-playground/pool.v1"
 )
 
 const (
-	mangafoxURL string = "http://mangafox.com/"
+	mangafoxURL string = "http://mangafox.me/"
 )
 
 type volume struct {
@@ -176,7 +177,9 @@ func (c *chapterDownload) getChapterFromFox(doc *goquery.Document, volume string
 
 	fmt.Printf("%v %v: Getting the chapter image urls\n", c.manga, c.chapter)
 	imgItemChan := make(chan imgItem)
+	var wg sync.WaitGroup
 	for i, url := range urls[:len(urls)-1] { //range over the slice..leave the last item out cause it's mostly always not valid
+		wg.Add(1)
 		go func(i int, url string) {
 			doc, err = goquery.NewDocument(url) //open a chapter page
 			if err != nil {
@@ -184,8 +187,10 @@ func (c *chapterDownload) getChapterFromFox(doc *goquery.Document, volume string
 				return
 			}
 			imgURL, _ := doc.Find("div.read_img img").Attr("src") //get the image url
-			imgItemChan <- imgItem{URL: imgURL, ID: i}            //send it
+			wg.Done()
+			imgItemChan <- imgItem{URL: imgURL, ID: i}
 		}(i, url)
+		wg.Wait()
 	}
 
 	for i := 0; i < len(urls)-1; i++ {

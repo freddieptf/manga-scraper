@@ -20,10 +20,15 @@ var (
 
 func main() {
 	kingpin.Parse()
-	n := 35 //default num of maxActiveDownloads
+	n := 5 //default num of maxActiveDownloads
 	if *maxActiveDownloads != 0 {
 		n = *maxActiveDownloads
 	}
+
+	if *foxFlag {
+			n = 1 // so we don't hammer the mangafox site...we start getting errors if we set this any higher
+			fmt.Println("Setting max active downloads to 1. You will get errors or missing chapter images if you set it any higher with mangafox as source.")
+		}
 
 	if len(*args) <= 0 && !*update {
 		fmt.Println("See GoManga --help for usage tips")
