@@ -17,9 +17,14 @@ var (
 		"chapters (volumes if --vlm is set) to download. Example format: 1 3 5-7 67 10-14").Strings()
 )
 
+const (
+	readerURL = "http://www.mangareader.net"
+	foxURL    = "http://mangafox.me/"
+)
+
 func main() {
 	kingpin.Parse()
-	n := 5 //default num of maxActiveDownloads
+	n := 1 //default num of maxActiveDownloads
 	if *maxActiveDownloads != 0 {
 		n = *maxActiveDownloads
 	}
@@ -34,25 +39,37 @@ func main() {
 		return
 	}
 
-	download := MangaDownload{
-		Args:      GetRange(args),
-		MangaName: manga,
-	}
+	var source mangaSource
 
 	switch {
 	case *foxFlag:
+		source = &foxManga{
+			Args:      GetRange(args),
+			MangaName: manga,
+			sourceUrl: foxURL,
+		}
 		if *vlm { //if we're downloading volumes
-			download.GetVolumeFromFox(n)
+			source.getVolumes(n)
 		} else {
-			download.GetFromFox(n)
+			source.getChapters(n)
 		}
 	case *readerFlag:
-		download.GetFromReader(n)
+		source = &readerManga{
+			Args:      GetRange(args),
+			MangaName: manga,
+			sourceUrl: readerURL,
+		}
+		source.getChapters(n)
 	case *update:
 		updateMangaLib()
 	default:
 		fmt.Println("Default source used: MangaReader.")
-		download.GetFromReader(n)
+		source = &readerManga{
+			Args:      GetRange(args),
+			MangaName: manga,
+			sourceUrl: readerURL,
+		}
+		source.getChapters(n)
 	}
 
 }

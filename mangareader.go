@@ -15,15 +15,16 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-const mangareaderURL = "http://www.mangareader.net"
-
-type searchResult struct {
-	manga, mangaID string
+type readerManga struct {
+	MangaName *string
+	Args      *[]int //chapters||volumes to download
+	sourceUrl string
 }
 
-//GetFromReader get manga chapters from mangareader
-func (d *MangaDownload) GetFromReader(n int) {
-	results, err := searchReader(d.MangaName)
+// GetFromReader get manga chapters from mangareader
+// param n here is the number of active parallel downloads
+func (d *readerManga) getChapters(n int) {
+	results, err := d.search()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -70,9 +71,11 @@ scanDem:
 
 	for _, chapter := range *d.Args {
 		p.Queue(fn, &chapterDownload{
-			url:     urlPath, //we actually pass the manga_id from the path here and build the url later in getChapterFromReader
-			manga:   *d.MangaName,
-			chapter: strconv.Itoa(chapter),
+			sourceUrl:  d.sourceUrl,
+			mangaId:    urlPath, // we actually pass the manga_id from the path here and build the url later in getChapterFromReader
+			manga:      *d.MangaName,
+			chapter:    strconv.Itoa(chapter),
+			chapterUrl: d.sourceUrl + urlPath + "/" + strconv.Itoa(chapter),
 		}) //queue the jobs
 	}
 
@@ -95,10 +98,9 @@ func (c *chapterDownload) getChapterFromReader() error {
 		imgUrls []imgItem
 		doc     *goquery.Document
 		err     error
-		baseURL = "http://www.mangareader.net"
 	)
 
-	doc, err = goquery.NewDocument(baseURL + c.url + "/" + c.chapter)
+	doc, err = goquery.NewDocument(c.chapterUrl)
 	if err != nil {
 		return err
 	}
@@ -106,7 +108,7 @@ func (c *chapterDownload) getChapterFromReader() error {
 	//get the manga page urls
 	doc.Find("div#selectpage > select#pageMenu > option").Each(func(i int, s *goquery.Selection) {
 		url, _ := s.Attr("value")
-		url = baseURL + url
+		url = c.sourceUrl + url
 		urls = append(urls, url)
 	})
 
@@ -114,7 +116,7 @@ func (c *chapterDownload) getChapterFromReader() error {
 	titleChan := make(chan string)
 	go func() {
 		var title string
-		d, e := goquery.NewDocument(baseURL + c.url)
+		d, e := goquery.NewDocument(c.sourceUrl + c.mangaId)
 		if e != nil {
 			log.Println(e)
 			titleChan <- title
@@ -185,15 +187,17 @@ func (c *chapterDownload) getChapterFromReader() error {
 	return nil
 }
 
-func searchReader(manga *string) (map[int]searchResult, error) {
-	doc, err := goquery.NewDocument(mangareaderURL + "/alphabetical")
+func (d *readerManga) getVolumes(n int) {}
+
+func (download *readerManga) search() (map[int]searchResult, error) {
+	doc, err := goquery.NewDocument(download.sourceUrl + "/alphabetical")
 	if err != nil {
 		return nil, err
 	}
 	var results = make(map[int]searchResult)
 	//find possible matches in the site's manga list for the mangaName provided;
 	doc.Find("ul.series_alpha > li > a").Each(func(i int, s *goquery.Selection) {
-		if strings.Contains(strings.ToLower(s.Text()), strings.ToLower(*manga)) {
+		if strings.Contains(strings.ToLower(s.Text()), strings.ToLower(*download.MangaName)) {
 			mid, _ := s.Attr("href")
 			results[i] = searchResult{s.Text(), mid}
 		}

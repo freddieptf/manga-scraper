@@ -15,23 +15,28 @@ import (
 	"gopkg.in/go-playground/pool.v1"
 )
 
-const (
-	mangafoxURL string = "http://mangafox.me/"
-)
-
 type volume struct {
 	volume   string
 	chapters []string
 }
 
+type foxManga struct {
+	MangaName *string
+	Args      *[]int //chapters||volumes to download
+	sourceUrl string
+}
+
 //GetFromFox gets manga chapters from mangafox
-func (d *MangaDownload) GetFromFox(n int) {
-	mangaURL, err := searchFox(d.MangaName)
+func (d *foxManga) getChapters(n int) {
+	results, err := d.search()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	match := getMatchFromSearchResults(results)
+
 	p := pool.NewPool(n, len(*d.Args))
+
 	fn := func(job *pool.Job) {
 		e := job.Params()[0].(*chapterDownload).getChapterFromFox(nil, "") //pass empty cause it's not a volume download..nil cause we aren't caching none
 		if e != nil {
@@ -44,9 +49,9 @@ func (d *MangaDownload) GetFromFox(n int) {
 
 	for _, chapter := range *d.Args {
 		p.Queue(fn, &chapterDownload{
-			url:     mangaURL,
-			manga:   *d.MangaName,
-			chapter: strconv.Itoa(chapter),
+			chapterUrl: match.mangaID,
+			manga:      match.manga,
+			chapter:    strconv.Itoa(chapter),
 		})
 	}
 
@@ -63,13 +68,15 @@ func (d *MangaDownload) GetFromFox(n int) {
 }
 
 //GetVolumeFromFox gets manga volumes from Mangafox
-func (d *MangaDownload) GetVolumeFromFox(n int) {
-	mangaURL, err := searchFox(d.MangaName)
+func (d *foxManga) getVolumes(n int) {
+	results, err := d.search()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	doc, err := goquery.NewDocument(mangaURL)
+	match := getMatchFromSearchResults(results)
+
+	doc, err := goquery.NewDocument(match.mangaID)
 	if err != nil {
 		log.Println(err)
 		return
@@ -136,7 +143,7 @@ func (d *MangaDownload) GetVolumeFromFox(n int) {
 func (c *chapterDownload) getChapterFromFox(doc *goquery.Document, volume string) error {
 	var err error
 	if doc == nil {
-		doc, err = goquery.NewDocument(c.url) //open the manga's page on mangafox
+		doc, err = goquery.NewDocument(c.chapterUrl) //open the manga's page on mangafox
 		if err != nil {
 			return err
 		}
@@ -235,25 +242,29 @@ func (c *chapterDownload) getChapterFromFox(doc *goquery.Document, volume string
 	return nil
 }
 
-//search the mangafox mangalist given a manga name string, returns the manga URL or error if any
-func searchFox(manga *string) (string, error) {
-	doc, err := goquery.NewDocument(mangafoxURL + "manga/")
+//search the mangafox mangalist given a manga name string, returns the collection of results
+func (download *foxManga) search() (map[int]searchResult, error) {
+	doc, err := goquery.NewDocument(download.sourceUrl + "manga/")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var results = make(map[int]searchResult)
 	doc.Find("div.manga_list li > a").Each(func(i int, s *goquery.Selection) { //go through the mangalist until we find matches
-		if strings.Contains(strings.ToLower(s.Text()), strings.ToLower(*manga)) {
+		if strings.Contains(strings.ToLower(s.Text()), strings.ToLower(*download.MangaName)) {
 			mid, _ := s.Attr("href")
 			results[i] = searchResult{s.Text(), mid}
 		}
 	})
 
 	if len(results) <= 0 {
-		return "", errors.New(*manga + " could not be found")
+		return nil, errors.New("found Zero results. Exiting")
 	}
 
+	return results, nil
+}
+
+func getMatchFromSearchResults(results map[int]searchResult) searchResult {
 	fmt.Printf("Id \t Manga\n")
 	for i, m := range results {
 		fmt.Printf("%d \t %s\n", i, m.manga)
@@ -262,6 +273,7 @@ func searchFox(manga *string) (string, error) {
 	myScanner := bufio.NewScanner(os.Stdin)
 	fmt.Printf("Enter the id of the correct manga: ")
 	var id int
+	var err error
 scanDem:
 	for myScanner.Scan() {
 		id, err = strconv.Atoi(myScanner.Text())
@@ -277,6 +289,5 @@ scanDem:
 		fmt.Printf("Insert one of the Ids in the results, please: ")
 		goto scanDem
 	}
-	*manga = match.manga
-	return match.mangaID, nil
+	return match
 }
