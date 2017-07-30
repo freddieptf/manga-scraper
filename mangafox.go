@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"log"
@@ -82,26 +81,8 @@ func (d *foxManga) getVolumes(n int) {
 		return
 	}
 
-	var volumes []volume
-	doc.Find("div.slide").Each(func(i int, s *goquery.Selection) {
-		for _, v := range *d.Args {
-			st := strings.Split(s.Find("h3.volume").Text(), " Chapter ")
-			vi, err := strconv.Atoi(strings.Split(st[0], "Volume ")[1])
-			if err != nil {
-				return
-			}
-			if v == vi {
-				var vol volume
-				vol.volume = st[0]
-				as := s.Next().First().Find("li a.tips")
-				for i := as.Size() - 1; i >= 0; i-- { //get oldest chapter to newest
-					a := as.Eq(i)
-					vol.chapters = append(vol.chapters, strings.Split(a.Text(), *d.MangaName+" ")[1])
-				}
-				volumes = append(volumes, vol)
-			}
-		}
-	})
+	*d.MangaName = match.manga
+	volumes := findFoxVolumes(doc, d)
 
 	p := pool.NewPool(n, len(*d.Args))
 	fn := func(job *pool.Job) {
@@ -135,6 +116,30 @@ func (d *foxManga) getVolumes(n int) {
 		fmt.Println("Download Successful: ", res)
 	}
 
+}
+
+func findFoxVolumes(doc *goquery.Document, d *foxManga) []volume {
+	var vols []volume
+	doc.Find("div.slide").Each(func(i int, s *goquery.Selection) {
+		for _, v := range *d.Args {
+			st := strings.Split(s.Find("h3.volume").Text(), " Chapter ")
+			vi, err := strconv.Atoi(strings.Split(st[0], "Volume ")[1])
+			if err != nil {
+				log.Printf("%v\n", err)
+			}
+			if v == vi {
+				var vol volume
+				vol.volume = st[0]
+				as := s.Next().First().Find("li a.tips")
+				for i := as.Size() - 1; i >= 0; i-- { //get oldest chapter to newest
+					a := as.Eq(i)
+					vol.chapters = append(vol.chapters, strings.Split(a.Text(), *d.MangaName+" ")[1])
+				}
+				vols = append(vols, vol)
+			}
+		}
+	})
+	return vols
 }
 
 //download a chapter from mangafox...
@@ -262,32 +267,4 @@ func (download *foxManga) search() (map[int]searchResult, error) {
 	}
 
 	return results, nil
-}
-
-func getMatchFromSearchResults(results map[int]searchResult) searchResult {
-	fmt.Printf("Id \t Manga\n")
-	for i, m := range results {
-		fmt.Printf("%d \t %s\n", i, m.manga)
-	}
-
-	myScanner := bufio.NewScanner(os.Stdin)
-	fmt.Printf("Enter the id of the correct manga: ")
-	var id int
-	var err error
-scanDem:
-	for myScanner.Scan() {
-		id, err = strconv.Atoi(myScanner.Text())
-		if err != nil {
-			fmt.Printf("Enter a valid Id, please: ")
-			goto scanDem
-		}
-		break
-	}
-	//get the matching id
-	match, exists := results[id] // mangafox has the manga url also in the catalogue so we use that
-	if !exists {
-		fmt.Printf("Insert one of the Ids in the results, please: ")
-		goto scanDem
-	}
-	return match
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"log"
@@ -29,32 +28,7 @@ func (d *readerManga) getChapters(n int) {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Id \t Manga\n")
-	for i, m := range results {
-		fmt.Printf("%d \t %s\n", i, m.manga)
-	}
-
-	//get the correct id from the user incase of multiple match results
-	myScanner := bufio.NewScanner(os.Stdin)
-	fmt.Printf("Enter the id of the correct manga: ")
-	var id int
-scanDem:
-	for myScanner.Scan() {
-		id, err = strconv.Atoi(myScanner.Text())
-		if err != nil {
-			fmt.Printf("Enter a valid Id, please: ")
-			goto scanDem
-		}
-		break
-	}
-
-	//get the matching id
-	match, exists := results[id]
-	if !exists {
-		fmt.Printf("Insert one of the Ids in the results, please: ")
-		goto scanDem
-	}
-	urlPath := match.mangaID
+	match := getMatchFromSearchResults(results)
 	*d.MangaName = match.manga
 
 	p := pool.NewPool(n, len(*d.Args)) //goroutine pool
@@ -72,10 +46,10 @@ scanDem:
 	for _, chapter := range *d.Args {
 		p.Queue(fn, &chapterDownload{
 			sourceUrl:  d.sourceUrl,
-			mangaId:    urlPath, // we actually pass the manga_id from the path here and build the url later in getChapterFromReader
+			mangaId:    match.mangaID, // we actually pass the manga_id from the path here and build the url later in getChapterFromReader
 			manga:      *d.MangaName,
 			chapter:    strconv.Itoa(chapter),
-			chapterUrl: d.sourceUrl + urlPath + "/" + strconv.Itoa(chapter),
+			chapterUrl: d.sourceUrl + match.mangaID + "/" + strconv.Itoa(chapter),
 		}) //queue the jobs
 	}
 

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -40,4 +42,32 @@ func GetRange(vals *[]string) *[]int {
 	fmt.Printf("%v\n", chapters)
 
 	return &chapters
+}
+
+func getMatchFromSearchResults(results map[int]searchResult) searchResult {
+	fmt.Printf("Id \t Manga\n")
+	for i, m := range results {
+		fmt.Printf("%d \t %s\n", i, m.manga)
+	}
+
+	myScanner := bufio.NewScanner(os.Stdin)
+	fmt.Printf("Enter the id of the correct manga: ")
+	var id int
+	var err error
+scanDem:
+	for myScanner.Scan() {
+		id, err = strconv.Atoi(myScanner.Text())
+		if err != nil {
+			fmt.Printf("Enter a valid Id, please: ")
+			goto scanDem
+		}
+		break
+	}
+	//get the matching id
+	match, exists := results[id] // mangafox has the manga url also in the catalogue so we use that
+	if !exists {
+		fmt.Printf("Insert one of the Ids in the results, please: ")
+		goto scanDem
+	}
+	return match
 }
