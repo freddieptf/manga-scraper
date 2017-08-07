@@ -39,7 +39,7 @@ func updateMangaLib() {
 
 func updateReaderLib(parentPath string) {
 	mangaReaderPath := filepath.Join(parentPath, "MangaReader")
-	var currentReaderChapters []chapterDownload
+	var currentReaderChapters []readerChapter
 
 	if f, err := os.Open(mangaReaderPath); err == nil {
 		mangaFolders, err := f.Readdirnames(0)
@@ -56,7 +56,7 @@ func updateReaderLib(parentPath string) {
 
 			sort.Sort(byChapter(chapters))
 			currentReaderChapters = append(currentReaderChapters,
-				chapterDownload{
+				readerChapter{
 					manga:   folderpath,
 					chapter: strings.Split(chapters[len(chapters)-1].Name(), ": ")[0],
 				})
@@ -70,7 +70,7 @@ func updateReaderLib(parentPath string) {
 
 func updateFoxLib(parentPath string) {
 	mangaFoxPath := filepath.Join(parentPath, "MangaFox")
-	var currentFoxChapters []chapterDownload
+	var currentFoxChapters []foxChapter
 
 	if f, err := os.Open(mangaFoxPath); err == nil {
 		mangaFolders, err := f.Readdirnames(0)
@@ -86,7 +86,7 @@ func updateFoxLib(parentPath string) {
 
 			sort.Sort(byChapter(chapters))
 			currentFoxChapters = append(currentFoxChapters,
-				chapterDownload{
+				foxChapter{
 					manga:   folderpath,
 					chapter: strings.Split(chapters[len(chapters)-1].Name(), ": ")[0],
 				})

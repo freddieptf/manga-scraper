@@ -6,13 +6,8 @@ type mangaSource interface {
 	getVolumes(n int)
 }
 
-type chapterDownload struct {
-	sourceUrl  string
-	mangaId    string
-	chapterUrl string
-	manga      string //name of the manga
-	chapter    string
-	volume     string //what volume the chapter belongs to, optional really
+type chapterSource interface {
+	getChapter() error
 }
 
 type searchResult struct {

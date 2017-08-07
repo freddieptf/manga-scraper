@@ -25,6 +25,16 @@ type foxManga struct {
 	sourceUrl string
 }
 
+type foxChapter struct {
+	sourceUrl  string
+	mangaId    string
+	chapterUrl string
+	manga      string //name of the manga
+	chapter    string
+	volume     string            //what volume the chapter belongs to, optional really
+	volumeDoc  *goquery.Document // volume doc if any so we don't have to get the doc again
+}
+
 //GetFromFox gets manga chapters from mangafox
 func (d *foxManga) getChapters(n int) {
 	results, err := d.search()
@@ -37,17 +47,17 @@ func (d *foxManga) getChapters(n int) {
 	p := pool.NewPool(n, len(*d.Args))
 
 	fn := func(job *pool.Job) {
-		e := job.Params()[0].(*chapterDownload).getChapterFromFox(nil, "") //pass empty cause it's not a volume download..nil cause we aren't caching none
+		e := job.Params()[0].(*foxChapter).getChapter()
 		if e != nil {
 			fmt.Printf("Download Failed: %v chapter %v (%v)\n",
-				job.Params()[0].(*chapterDownload).manga, job.Params()[0].(*chapterDownload).chapter, e)
+				job.Params()[0].(*foxChapter).manga, job.Params()[0].(*foxChapter).chapter, e)
 			return
 		}
-		job.Return(job.Params()[0].(*chapterDownload).manga + " " + job.Params()[0].(*chapterDownload).chapter)
+		job.Return(job.Params()[0].(*foxChapter).manga + " " + job.Params()[0].(*foxChapter).chapter)
 	}
 
 	for _, chapter := range *d.Args {
-		p.Queue(fn, &chapterDownload{
+		p.Queue(fn, &foxChapter{
 			chapterUrl: match.mangaID,
 			manga:      match.manga,
 			chapter:    strconv.Itoa(chapter),
@@ -86,23 +96,23 @@ func (d *foxManga) getVolumes(n int) {
 
 	p := pool.NewPool(n, len(*d.Args))
 	fn := func(job *pool.Job) {
-		e := job.Params()[0].(*chapterDownload).getChapterFromFox(job.Params()[1].(*goquery.Document), //pass the doc..caching blah blah
-			job.Params()[0].(*chapterDownload).volume) //pass what volume we're downloading from
+		e := job.Params()[0].(*foxChapter).getChapter()
 		if e != nil {
 			fmt.Printf("Download Failed: %v chapter %v (%v)\n",
-				job.Params()[0].(*chapterDownload).manga, job.Params()[0].(*chapterDownload).chapter, e)
+				job.Params()[0].(*foxChapter).manga, job.Params()[0].(*foxChapter).chapter, e)
 			return
 		}
-		job.Return(job.Params()[0].(*chapterDownload).manga + " " + job.Params()[0].(*chapterDownload).chapter)
+		job.Return(job.Params()[0].(*foxChapter).manga + " " + job.Params()[0].(*foxChapter).chapter)
 	}
 
 	for i := len(volumes) - 1; i >= 0; i-- { //reverse the order since the older volumes are at the end...older first
 		for _, chapter := range volumes[i].chapters {
-			p.Queue(fn, &chapterDownload{
-				manga:   *d.MangaName,
-				chapter: chapter,
-				volume:  volumes[i].volume,
-			}, doc)
+			p.Queue(fn, &foxChapter{
+				manga:     *d.MangaName,
+				chapter:   chapter,
+				volume:    volumes[i].volume,
+				volumeDoc: doc,
+			})
 		}
 	}
 
@@ -142,17 +152,19 @@ func findFoxVolumes(doc *goquery.Document, d *foxManga) []volume {
 	return vols
 }
 
-//download a chapter from mangafox...
-//@param volume used when creating the manga directories
-//@param doc passed from GetVolumeFromFox so we don't create a new one
-func (c *chapterDownload) getChapterFromFox(doc *goquery.Document, volume string) error {
+func (c *foxChapter) getChapter() error {
 	var err error
-	if doc == nil {
+	var doc *goquery.Document
+
+	if c.volumeDoc == nil {
 		doc, err = goquery.NewDocument(c.chapterUrl) //open the manga's page on mangafox
 		if err != nil {
 			return err
 		}
+	} else {
+		doc = c.volumeDoc
 	}
+
 	var page1 string
 	var urls []string
 	var imgUrls []imgItem
@@ -210,10 +222,10 @@ func (c *chapterDownload) getChapterFromFox(doc *goquery.Document, volume string
 	}
 
 	var chapterPath string
-	if volume == "" {
+	if c.volume == "" {
 		chapterPath = filepath.Join(os.Getenv("HOME"), "Manga", "MangaFox", c.manga, c.chapter+": "+<-titleChan)
 	} else {
-		chapterPath = filepath.Join(os.Getenv("HOME"), "Manga", "MangaFox", c.manga, volume, c.chapter+": "+<-titleChan)
+		chapterPath = filepath.Join(os.Getenv("HOME"), "Manga", "MangaFox", c.manga, c.volume, c.chapter+": "+<-titleChan)
 	}
 	err = os.MkdirAll(chapterPath, 0777)
 	if err != nil {

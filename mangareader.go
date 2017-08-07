@@ -20,6 +20,14 @@ type readerManga struct {
 	sourceUrl string
 }
 
+type readerChapter struct {
+	sourceUrl  string
+	mangaId    string
+	chapterUrl string
+	manga      string //name of the manga
+	chapter    string
+}
+
 // GetFromReader get manga chapters from mangareader
 // param n here is the number of active parallel downloads
 func (d *readerManga) getChapters(n int) {
@@ -34,17 +42,17 @@ func (d *readerManga) getChapters(n int) {
 	p := pool.NewPool(n, len(*d.Args)) //goroutine pool
 
 	fn := func(job *pool.Job) { //job
-		e := job.Params()[0].(*chapterDownload).getChapterFromReader()
+		e := job.Params()[0].(*readerChapter).getChapter()
 		if e != nil {
 			fmt.Printf("Download Failed: %v chapter %v (%v)\n",
-				job.Params()[0].(*chapterDownload).manga, job.Params()[0].(*chapterDownload).chapter, e)
+				job.Params()[0].(*readerChapter).manga, job.Params()[0].(*readerChapter).chapter, e)
 			return
 		}
-		job.Return(job.Params()[0].(*chapterDownload).manga + " chapter " + job.Params()[0].(*chapterDownload).chapter)
+		job.Return(job.Params()[0].(*readerChapter).manga + " chapter " + job.Params()[0].(*readerChapter).chapter)
 	}
 
 	for _, chapter := range *d.Args {
-		p.Queue(fn, &chapterDownload{
+		p.Queue(fn, &readerChapter{
 			sourceUrl:  d.sourceUrl,
 			mangaId:    match.mangaID, // we actually pass the manga_id from the path here and build the url later in getChapterFromReader
 			manga:      *d.MangaName,
@@ -66,7 +74,7 @@ func (d *readerManga) getChapters(n int) {
 }
 
 //@TODO If a chapter doesn't exist onsite, return an error.
-func (c *chapterDownload) getChapterFromReader() error {
+func (c *readerChapter) getChapter() error {
 	var (
 		urls    []string
 		imgUrls []imgItem
