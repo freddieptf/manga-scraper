@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"log"
@@ -15,38 +14,53 @@ import (
 	"gopkg.in/go-playground/pool.v1"
 )
 
-const (
-	mangafoxURL string = "http://mangafox.me/"
-)
-
 type volume struct {
 	volume   string
 	chapters []string
 }
 
+type foxManga struct {
+	MangaName *string
+	Args      *[]int //chapters||volumes to download
+	sourceUrl string
+}
+
+type foxChapter struct {
+	sourceUrl  string
+	mangaId    string
+	chapterUrl string
+	manga      string //name of the manga
+	chapter    string
+	volume     string            //what volume the chapter belongs to, optional really
+	volumeDoc  *goquery.Document // volume doc if any so we don't have to get the doc again
+}
+
 //GetFromFox gets manga chapters from mangafox
-func (d *MangaDownload) GetFromFox(n int) {
-	mangaURL, err := searchFox(d.MangaName)
+func (d *foxManga) getChapters(n int) {
+	results, err := d.search()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	match := getMatchFromSearchResults(results)
+
 	p := pool.NewPool(n, len(*d.Args))
+
 	fn := func(job *pool.Job) {
-		e := job.Params()[0].(*chapterDownload).getChapterFromFox(nil, "") //pass empty cause it's not a volume download..nil cause we aren't caching none
+		e := job.Params()[0].(*foxChapter).getChapter()
 		if e != nil {
 			fmt.Printf("Download Failed: %v chapter %v (%v)\n",
-				job.Params()[0].(*chapterDownload).manga, job.Params()[0].(*chapterDownload).chapter, e)
+				job.Params()[0].(*foxChapter).manga, job.Params()[0].(*foxChapter).chapter, e)
 			return
 		}
-		job.Return(job.Params()[0].(*chapterDownload).manga + " " + job.Params()[0].(*chapterDownload).chapter)
+		job.Return(job.Params()[0].(*foxChapter).manga + " " + job.Params()[0].(*foxChapter).chapter)
 	}
 
 	for _, chapter := range *d.Args {
-		p.Queue(fn, &chapterDownload{
-			url:     mangaURL,
-			manga:   *d.MangaName,
-			chapter: strconv.Itoa(chapter),
+		p.Queue(fn, &foxChapter{
+			chapterUrl: match.mangaID,
+			manga:      match.manga,
+			chapter:    strconv.Itoa(chapter),
 		})
 	}
 
@@ -63,58 +77,42 @@ func (d *MangaDownload) GetFromFox(n int) {
 }
 
 //GetVolumeFromFox gets manga volumes from Mangafox
-func (d *MangaDownload) GetVolumeFromFox(n int) {
-	mangaURL, err := searchFox(d.MangaName)
+func (d *foxManga) getVolumes(n int) {
+	results, err := d.search()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	doc, err := goquery.NewDocument(mangaURL)
+	match := getMatchFromSearchResults(results)
+
+	doc, err := goquery.NewDocument(match.mangaID)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	var volumes []volume
-	doc.Find("div.slide").Each(func(i int, s *goquery.Selection) {
-		for _, v := range *d.Args {
-			st := strings.Split(s.Find("h3.volume").Text(), " Chapter ")
-			vi, err := strconv.Atoi(strings.Split(st[0], "Volume ")[1])
-			if err != nil {
-				return
-			}
-			if v == vi {
-				var vol volume
-				vol.volume = st[0]
-				as := s.Next().First().Find("li a.tips")
-				for i := as.Size() - 1; i >= 0; i-- { //get oldest chapter to newest
-					a := as.Eq(i)
-					vol.chapters = append(vol.chapters, strings.Split(a.Text(), *d.MangaName+" ")[1])
-				}
-				volumes = append(volumes, vol)
-			}
-		}
-	})
+	*d.MangaName = match.manga
+	volumes := findFoxVolumes(doc, d)
 
 	p := pool.NewPool(n, len(*d.Args))
 	fn := func(job *pool.Job) {
-		e := job.Params()[0].(*chapterDownload).getChapterFromFox(job.Params()[1].(*goquery.Document), //pass the doc..caching blah blah
-			job.Params()[0].(*chapterDownload).volume) //pass what volume we're downloading from
+		e := job.Params()[0].(*foxChapter).getChapter()
 		if e != nil {
 			fmt.Printf("Download Failed: %v chapter %v (%v)\n",
-				job.Params()[0].(*chapterDownload).manga, job.Params()[0].(*chapterDownload).chapter, e)
+				job.Params()[0].(*foxChapter).manga, job.Params()[0].(*foxChapter).chapter, e)
 			return
 		}
-		job.Return(job.Params()[0].(*chapterDownload).manga + " " + job.Params()[0].(*chapterDownload).chapter)
+		job.Return(job.Params()[0].(*foxChapter).manga + " " + job.Params()[0].(*foxChapter).chapter)
 	}
 
 	for i := len(volumes) - 1; i >= 0; i-- { //reverse the order since the older volumes are at the end...older first
 		for _, chapter := range volumes[i].chapters {
-			p.Queue(fn, &chapterDownload{
-				manga:   *d.MangaName,
-				chapter: chapter,
-				volume:  volumes[i].volume,
-			}, doc)
+			p.Queue(fn, &foxChapter{
+				manga:     *d.MangaName,
+				chapter:   chapter,
+				volume:    volumes[i].volume,
+				volumeDoc: doc,
+			})
 		}
 	}
 
@@ -130,17 +128,43 @@ func (d *MangaDownload) GetVolumeFromFox(n int) {
 
 }
 
-//download a chapter from mangafox...
-//@param volume used when creating the manga directories
-//@param doc passed from GetVolumeFromFox so we don't create a new one
-func (c *chapterDownload) getChapterFromFox(doc *goquery.Document, volume string) error {
+func findFoxVolumes(doc *goquery.Document, d *foxManga) []volume {
+	var vols []volume
+	doc.Find("div.slide").Each(func(i int, s *goquery.Selection) {
+		for _, v := range *d.Args {
+			st := strings.Split(s.Find("h3.volume").Text(), " Chapter ")
+			vi, err := strconv.Atoi(strings.Split(st[0], "Volume ")[1])
+			if err != nil {
+				log.Printf("%v\n", err)
+			}
+			if v == vi {
+				var vol volume
+				vol.volume = st[0]
+				as := s.Next().First().Find("li a.tips")
+				for i := as.Size() - 1; i >= 0; i-- { //get oldest chapter to newest
+					a := as.Eq(i)
+					vol.chapters = append(vol.chapters, strings.Split(a.Text(), *d.MangaName+" ")[1])
+				}
+				vols = append(vols, vol)
+			}
+		}
+	})
+	return vols
+}
+
+func (c *foxChapter) getChapter() error {
 	var err error
-	if doc == nil {
-		doc, err = goquery.NewDocument(c.url) //open the manga's page on mangafox
+	var doc *goquery.Document
+
+	if c.volumeDoc == nil {
+		doc, err = goquery.NewDocument(c.chapterUrl) //open the manga's page on mangafox
 		if err != nil {
 			return err
 		}
+	} else {
+		doc = c.volumeDoc
 	}
+
 	var page1 string
 	var urls []string
 	var imgUrls []imgItem
@@ -198,10 +222,10 @@ func (c *chapterDownload) getChapterFromFox(doc *goquery.Document, volume string
 	}
 
 	var chapterPath string
-	if volume == "" {
+	if c.volume == "" {
 		chapterPath = filepath.Join(os.Getenv("HOME"), "Manga", "MangaFox", c.manga, c.chapter+": "+<-titleChan)
 	} else {
-		chapterPath = filepath.Join(os.Getenv("HOME"), "Manga", "MangaFox", c.manga, volume, c.chapter+": "+<-titleChan)
+		chapterPath = filepath.Join(os.Getenv("HOME"), "Manga", "MangaFox", c.manga, c.volume, c.chapter+": "+<-titleChan)
 	}
 	err = os.MkdirAll(chapterPath, 0777)
 	if err != nil {
@@ -235,48 +259,24 @@ func (c *chapterDownload) getChapterFromFox(doc *goquery.Document, volume string
 	return nil
 }
 
-//search the mangafox mangalist given a manga name string, returns the manga URL or error if any
-func searchFox(manga *string) (string, error) {
-	doc, err := goquery.NewDocument(mangafoxURL + "manga/")
+//search the mangafox mangalist given a manga name string, returns the collection of results
+func (download *foxManga) search() (map[int]searchResult, error) {
+	doc, err := goquery.NewDocument(download.sourceUrl + "manga/")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var results = make(map[int]searchResult)
 	doc.Find("div.manga_list li > a").Each(func(i int, s *goquery.Selection) { //go through the mangalist until we find matches
-		if strings.Contains(strings.ToLower(s.Text()), strings.ToLower(*manga)) {
+		if strings.Contains(strings.ToLower(s.Text()), strings.ToLower(*download.MangaName)) {
 			mid, _ := s.Attr("href")
 			results[i] = searchResult{s.Text(), mid}
 		}
 	})
 
 	if len(results) <= 0 {
-		return "", errors.New(*manga + " could not be found")
+		return nil, errors.New("found Zero results. Exiting")
 	}
 
-	fmt.Printf("Id \t Manga\n")
-	for i, m := range results {
-		fmt.Printf("%d \t %s\n", i, m.manga)
-	}
-
-	myScanner := bufio.NewScanner(os.Stdin)
-	fmt.Printf("Enter the id of the correct manga: ")
-	var id int
-scanDem:
-	for myScanner.Scan() {
-		id, err = strconv.Atoi(myScanner.Text())
-		if err != nil {
-			fmt.Printf("Enter a valid Id, please: ")
-			goto scanDem
-		}
-		break
-	}
-	//get the matching id
-	match, exists := results[id] // mangafox has the manga url also in the catalogue so we use that
-	if !exists {
-		fmt.Printf("Insert one of the Ids in the results, please: ")
-		goto scanDem
-	}
-	*manga = match.manga
-	return match.mangaID, nil
+	return results, nil
 }
