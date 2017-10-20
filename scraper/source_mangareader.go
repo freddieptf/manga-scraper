@@ -1,0 +1,144 @@
+package mangascraper
+
+import (
+	"errors"
+	"github.com/PuerkitoBio/goquery"
+	"log"
+	"strconv"
+	"strings"
+)
+
+const (
+	mangaReaderURL = "http://www.mangareader.net"
+)
+
+type ReaderManga struct {
+	Manga
+	Args *[]int //chapters||volumes to download
+}
+
+type readerChapter struct {
+	mangaId    string
+	chapterUrl string
+	manga      string //name of the manga
+	chapter    string
+}
+
+// Scrape manga chapters from mangareader
+// params: n - the number of active parallel scrapers to use
+func (d *ReaderManga) GetChapters(n int) *chan ScrapeResult {
+	workQueue := make(chan *scrapeJob, n)
+	resultChan := make(chan ScrapeResult)
+
+	go func() {
+		for _, chapter := range *d.Args {
+			ch := &readerChapter{
+				mangaId:    d.MangaID,
+				manga:      d.MangaName,
+				chapter:    strconv.Itoa(chapter),
+				chapterUrl: mangaReaderURL + d.MangaID + "/" + strconv.Itoa(chapter),
+			}
+			workQueue <- &scrapeJob{chapter: ch}
+		}
+		close(workQueue)
+	}()
+
+	startScraping(n, workQueue, &resultChan)
+
+	return &resultChan
+}
+
+func (c *readerChapter) getChapter() (Chapter, error) {
+	var (
+		sitePageUrls []string
+		chapterPages []ChapterPage
+		doc          *goquery.Document
+		err          error
+	)
+
+	doc, err = goquery.NewDocument(c.chapterUrl)
+	if err != nil {
+		return Chapter{}, err
+	}
+
+	//get the manga page urls
+	doc.Find("div#selectpage > select#pageMenu > option").Each(func(i int, s *goquery.Selection) {
+		url, _ := s.Attr("value")
+		url = mangaReaderURL + url
+		sitePageUrls = append(sitePageUrls, url)
+	})
+
+	//go off and get the chapter title from the chapter listings
+	titleChan := make(chan string)
+	go func() {
+		var title string
+		d, e := goquery.NewDocument(mangaReaderURL + c.mangaId)
+		if e != nil {
+			log.Println(e)
+			titleChan <- title
+			return
+		}
+		d.Find("div#chapterlist > table#listing td").Has("div.chico_manga").EachWithBreak(func(i int, s *goquery.Selection) bool {
+			link, _ := s.Find("a").Attr("href")
+			ps := strings.Split(link, "/")
+			if ps[2] == c.chapter {
+				title = strings.Split(s.Text(), " : ")[1]
+				return false
+			}
+			return true
+		})
+		titleChan <- title
+	}()
+
+	//scrape the manga pages for the image urls
+	log.Printf("%v %v: Getting the chapter image urls\n", c.manga, c.chapter)
+
+	pageChan := make(chan ChapterPage)
+	for i, url := range sitePageUrls {
+		go func(i int, url string) {
+			doc, err = goquery.NewDocument(url)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			imgURL, exists := doc.Find("div#imgholder img").Attr("src")
+			if !exists {
+				log.Println("Doesn't exist")
+				return
+			}
+			pageChan <- ChapterPage{Page: i, Url: imgURL}
+		}(i, url)
+	}
+
+	for i := 0; i < len(sitePageUrls); i++ {
+		chapterPages = append(chapterPages, <-pageChan)
+	}
+	chapterTitle := <-titleChan
+
+	chapter := Chapter{MangaName: "", ChapterTitle: chapterTitle, ChapterPages: chapterPages}
+
+	return chapter, nil
+}
+
+func (d *ReaderManga) GetVolumes(n int) {}
+
+func (download *ReaderManga) Search() ([]Manga, error) {
+	doc, err := goquery.NewDocument(mangaReaderURL + "/alphabetical")
+	results := []Manga{}
+	if err != nil {
+		return results, err
+	}
+	//find possible matches in the site's manga list for the mangaName provided;
+	doc.Find("ul.series_alpha > li > a").Each(func(i int, s *goquery.Selection) {
+		if strings.Contains(strings.ToLower(s.Text()), strings.ToLower(download.MangaName)) {
+			mid, _ := s.Attr("href")
+			results = append(results, Manga{MangaName: s.Text(), MangaID: mid})
+		}
+	})
+
+	if len(results) <= 0 {
+		return results, errors.New("found Zero results. Exiting")
+	}
+
+	return results, nil
+}
