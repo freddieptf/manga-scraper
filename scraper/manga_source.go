@@ -20,6 +20,6 @@ func (manga Manga) SetID(id string) {
 
 type MangaSource interface {
 	Search() ([]Manga, error)
-	GetChapters(n int) (chan Chapter, chan error)
-	GetVolumes(n int)
+	ScrapeChapters(n int) *chan ScrapeResult
+	ScrapeVolumes(n int)
 }

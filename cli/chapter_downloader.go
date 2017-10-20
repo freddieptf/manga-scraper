@@ -29,7 +29,7 @@ func getChaptersFromReader(n int, manga *string, args *[]string) {
 	source.MangaID = result.MangaID
 	source.Args = getRange(args)
 
-	resultsChan := source.GetChapters(n)
+	resultsChan := source.ScrapeChapters(n)
 	startDownloads(n, len(*source.Args), resultsChan)
 }
 

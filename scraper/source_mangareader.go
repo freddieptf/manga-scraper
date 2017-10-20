@@ -26,7 +26,7 @@ type readerChapter struct {
 
 // Scrape manga chapters from mangareader
 // params: n - the number of active parallel scrapers to use
-func (d *ReaderManga) GetChapters(n int) *chan ScrapeResult {
+func (d *ReaderManga) ScrapeChapters(n int) *chan ScrapeResult {
 	workQueue := make(chan *scrapeJob, n)
 	resultChan := make(chan ScrapeResult)
 
@@ -120,7 +120,7 @@ func (c *readerChapter) getChapter() (Chapter, error) {
 	return chapter, nil
 }
 
-func (d *ReaderManga) GetVolumes(n int) {}
+func (d *ReaderManga) ScrapeVolumes(n int) {}
 
 func (download *ReaderManga) Search() ([]Manga, error) {
 	doc, err := goquery.NewDocument(mangaReaderURL + "/alphabetical")
