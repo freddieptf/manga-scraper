@@ -2,10 +2,11 @@ package mangascraper
 
 import (
 	"errors"
-	"github.com/PuerkitoBio/goquery"
 	"log"
 	"strconv"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 const (
@@ -56,7 +57,7 @@ func (c *readerChapter) getChapter() (Chapter, error) {
 		err          error
 	)
 
-	doc, err = goquery.NewDocument(c.chapterUrl)
+	doc, err = makeDocRequest(c.chapterUrl)
 	if err != nil {
 		return Chapter{}, err
 	}
@@ -72,7 +73,7 @@ func (c *readerChapter) getChapter() (Chapter, error) {
 	titleChan := make(chan string)
 	go func() {
 		var title string
-		d, e := goquery.NewDocument(mangaReaderURL + c.mangaId)
+		d, e := makeDocRequest(mangaReaderURL + c.mangaId)
 		if e != nil {
 			log.Println(e)
 			titleChan <- title
@@ -96,7 +97,7 @@ func (c *readerChapter) getChapter() (Chapter, error) {
 	pageChan := make(chan ChapterPage)
 	for i, url := range sitePageUrls {
 		go func(i int, url string) {
-			doc, err = goquery.NewDocument(url)
+			doc, err = makeDocRequest(url)
 			if err != nil {
 				log.Println(err)
 				return
@@ -123,7 +124,7 @@ func (c *readerChapter) getChapter() (Chapter, error) {
 func (d *ReaderManga) ScrapeVolumes(n int) {}
 
 func (download *ReaderManga) Search() ([]Manga, error) {
-	doc, err := goquery.NewDocument(mangaReaderURL + "/alphabetical")
+	doc, err := makeDocRequest(mangaReaderURL + "/alphabetical")
 	results := []Manga{}
 	if err != nil {
 		return results, err
