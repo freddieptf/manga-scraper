@@ -2,7 +2,8 @@ package cli
 
 import (
 	"fmt"
-	// scraper "github.com/freddieptf/manga-scraper/scraper"
+
+	scraper "github.com/freddieptf/manga-scraper/scraper"
 
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
@@ -30,22 +31,24 @@ func CliParse() {
 		fmt.Println("Setting max active downloads to 1. You will get errors or missing chapter images if you set it any higher with mangafox as source.")
 	}
 
-	// var source scraper.MangaSource
+	var source scraper.MangaSource
 
 	switch {
-	// case *foxFlag:
-	// 	source = &foxManga{
-	// 		Args:      GetRange(args),
-	// 		MangaName: manga,
-	// 		sourceUrl: foxURL,
-	// 	}
-	// 	if *vlm { //if we're downloading volumes
-	// 		source.GetVolumes(n)
-	// 	} else {
-	// 		source.GetChapters(n)
-	// 	}
+	case *foxFlag:
+		// source = &scraper.FoxManga{}
+		// source.SetManga(scraper.Manga{MangaName: *manga})
+		// source.SetArgs(getRange(args))
+		// getChapters(n, source)
+		// if *vlm { //if we're downloading volumes
+		// 	source.GetVolumes(n)
+		// } else {
+		// 	source.GetChapters(n)
+		// }
 	case *readerFlag:
-		getChaptersFromReader(n, manga, args)
+		source = &scraper.ReaderManga{}
+		source.SetManga(scraper.Manga{MangaName: *manga})
+		source.SetArgs(getRange(args))
+		getChapters(n, source)
 	case *update:
 		// updateMangaLib()
 	default:

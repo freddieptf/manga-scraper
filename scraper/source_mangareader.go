@@ -123,6 +123,18 @@ func (c *readerChapter) getChapter() (Chapter, error) {
 
 func (d *ReaderManga) ScrapeVolumes(n int) {}
 
+func (d *ReaderManga) SetManga(manga Manga) {
+	d.Manga = manga
+}
+
+func (d *ReaderManga) SetArgs(args *[]int) {
+	d.Args = args
+}
+
+func (d *ReaderManga) GetArgs() *[]int {
+	return d.Args
+}
+
 func (download *ReaderManga) Search() ([]Manga, error) {
 	doc, err := makeDocRequest(mangaReaderURL + "/alphabetical")
 	results := []Manga{}

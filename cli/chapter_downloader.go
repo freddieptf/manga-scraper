@@ -1,10 +1,11 @@
 package cli
 
 import (
-	scraper "github.com/freddieptf/manga-scraper/scraper"
 	"log"
 	"sync"
 	"time"
+
+	scraper "github.com/freddieptf/manga-scraper/scraper"
 )
 
 var downloadJobChan chan scraper.Chapter
@@ -15,22 +16,16 @@ type chapterDownloader struct {
 	wg   *sync.WaitGroup
 }
 
-func getChaptersFromReader(n int, manga *string, args *[]string) {
-	source := scraper.ReaderManga{}
-
-	source.Manga = scraper.Manga{MangaName: *manga}
+func getChapters(n int, source scraper.MangaSource) {
 	results, err := source.Search()
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	result := getMatchFromSearchResults(results)
-
-	source.MangaName = result.MangaName
-	source.MangaID = result.MangaID
-	source.Args = getRange(args)
+	source.SetManga(result)
 
 	resultsChan := source.ScrapeChapters(n)
-	startDownloads(n, len(*source.Args), resultsChan)
+	startDownloads(n, len(*source.GetArgs()), resultsChan)
 }
 
 func newChapterDownloader(id int, wg *sync.WaitGroup) *chapterDownloader {
