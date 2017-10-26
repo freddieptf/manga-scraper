@@ -25,5 +25,5 @@ type MangaSource interface {
 
 	Search() ([]Manga, error)
 	ScrapeChapters(n int) *chan ScrapeResult
-	ScrapeVolumes(n int)
+	ScrapeVolumes(n int) (VlmChapterCount, *chan ScrapeResult)
 }

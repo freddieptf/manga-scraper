@@ -28,6 +28,21 @@ func getChapters(n int, source scraper.MangaSource) {
 	startDownloads(n, len(*source.GetArgs()), resultsChan)
 }
 
+func getVolumes(n int, source scraper.MangaSource) {
+	results, err := source.Search()
+	if err != nil {
+		log.Fatal(err)
+	}
+	result := getMatchFromSearchResults(results)
+	source.SetManga(result)
+
+	count, resultsChan := source.ScrapeVolumes(n)
+	if count.Err != nil {
+		log.Fatal(err)
+	}
+	startDownloads(n, count.ChapterCount, resultsChan)
+}
+
 func newChapterDownloader(id int, wg *sync.WaitGroup) *chapterDownloader {
 	return &chapterDownloader{
 		id:   id,
@@ -42,9 +57,9 @@ func (chDown *chapterDownloader) listen() {
 		for {
 			select {
 			case chapter := <-downloadJobChan:
-				log.Printf("downloader %d: Start new Download %v\n", chDown.id, chapter.ChapterTitle)
+				log.Printf("downloader %d: Start new Download %s : vlm %s\n", chDown.id, chapter.ChapterTitle, chapter.VolumeTitle)
 				time.Sleep(2 * time.Second)
-				log.Printf("downloader %d: Download done %v\n", chDown.id, chapter.ChapterTitle)
+				log.Printf("downloader %d: Download done %s : vlm %s\n", chDown.id, chapter.ChapterTitle, chapter.VolumeTitle)
 				chDown.wg.Done()
 			case <-chDown.quit:
 				return

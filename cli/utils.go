@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bufio"
 	"fmt"
-	scraper "github.com/freddieptf/manga-scraper/scraper"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,15 +14,13 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	scraper "github.com/freddieptf/manga-scraper/scraper"
 )
 
 type imgItem struct {
 	URL string
 	ID  int
-}
-
-type searchResult struct {
-	manga, mangaID string
 }
 
 func getRange(vals *[]string) *[]int {

@@ -121,7 +121,9 @@ func (c *readerChapter) getChapter() (Chapter, error) {
 	return chapter, nil
 }
 
-func (d *ReaderManga) ScrapeVolumes(n int) {}
+func (d *ReaderManga) ScrapeVolumes(n int) (VlmChapterCount, *chan ScrapeResult) {
+	return VlmChapterCount{Err: errors.New("Unimplemented for MangaReader")}, nil
+}
 
 func (d *ReaderManga) SetManga(manga Manga) {
 	d.Manga = manga

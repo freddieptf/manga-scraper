@@ -28,22 +28,23 @@ func CliParse() {
 
 	if *foxFlag {
 		n = 1 // so we don't hammer the mangafox site...we start getting errors if we set this any higher
-		fmt.Println("Setting max active downloads to 1. You will get errors or missing chapter images if you set it any higher with mangafox as source.")
+		fmt.Println("Setting max active downloads to 1. " +
+			"You will get errors or missing chapter images if you set it any higher with mangafox as source.")
 	}
 
 	var source scraper.MangaSource
 
 	switch {
 	case *foxFlag:
-		// source = &scraper.FoxManga{}
-		// source.SetManga(scraper.Manga{MangaName: *manga})
-		// source.SetArgs(getRange(args))
-		// getChapters(n, source)
-		// if *vlm { //if we're downloading volumes
-		// 	source.GetVolumes(n)
-		// } else {
-		// 	source.GetChapters(n)
-		// }
+		source = &scraper.FoxManga{}
+		source.SetManga(scraper.Manga{MangaName: *manga})
+		source.SetArgs(getRange(args))
+		if *vlm { //if we're downloading volumes
+			getVolumes(n, source)
+		} else {
+			getChapters(n, source)
+
+		}
 	case *readerFlag:
 		source = &scraper.ReaderManga{}
 		source.SetManga(scraper.Manga{MangaName: *manga})
