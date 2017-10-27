@@ -2,6 +2,7 @@ package mangascraper
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -21,8 +22,8 @@ type ReaderManga struct {
 type readerChapter struct {
 	mangaId    string
 	chapterUrl string
-	manga      string //name of the manga
-	chapter    string
+	mangaName  string //name of the manga
+	chapterId  string //the id, usually a number.
 }
 
 // Scrape manga chapters from mangareader
@@ -35,8 +36,8 @@ func (d *ReaderManga) ScrapeChapters(n int) *chan ScrapeResult {
 		for _, chapter := range *d.Args {
 			ch := &readerChapter{
 				mangaId:    d.MangaID,
-				manga:      d.MangaName,
-				chapter:    strconv.Itoa(chapter),
+				mangaName:  d.MangaName,
+				chapterId:  strconv.Itoa(chapter),
 				chapterUrl: mangaReaderURL + d.MangaID + "/" + strconv.Itoa(chapter),
 			}
 			workQueue <- &scrapeJob{chapter: ch}
@@ -82,7 +83,7 @@ func (c *readerChapter) getChapter() (Chapter, error) {
 		d.Find("div#chapterlist > table#listing td").Has("div.chico_manga").EachWithBreak(func(i int, s *goquery.Selection) bool {
 			link, _ := s.Find("a").Attr("href")
 			ps := strings.Split(link, "/")
-			if ps[2] == c.chapter {
+			if ps[2] == c.chapterId {
 				title = strings.Split(s.Text(), " : ")[1]
 				return false
 			}
@@ -92,7 +93,7 @@ func (c *readerChapter) getChapter() (Chapter, error) {
 	}()
 
 	//scrape the manga pages for the image urls
-	log.Printf("%v %v: Getting the chapter image urls\n", c.manga, c.chapter)
+	log.Printf("%v %v: Getting the chapter image urls\n", c.mangaName, c.chapterId)
 
 	pageChan := make(chan ChapterPage)
 	for i, url := range sitePageUrls {
@@ -114,9 +115,14 @@ func (c *readerChapter) getChapter() (Chapter, error) {
 	for i := 0; i < len(sitePageUrls); i++ {
 		chapterPages = append(chapterPages, <-pageChan)
 	}
-	chapterTitle := <-titleChan
 
-	chapter := Chapter{MangaName: "", ChapterTitle: chapterTitle, ChapterPages: chapterPages}
+	chapterTitle := <-titleChan
+	chapter := Chapter{
+		MangaName:    c.mangaName,
+		ChapterTitle: fmt.Sprintf("%s: %s", c.chapterId, chapterTitle),
+		ChapterPages: chapterPages,
+		SourceName:   "MangaReader",
+	}
 
 	return chapter, nil
 }

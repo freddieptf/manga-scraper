@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"log"
 
 	scraper "github.com/freddieptf/manga-scraper/scraper"
 
@@ -61,4 +62,31 @@ func CliParse() {
 		// source.GetChapters(n)
 	}
 
+}
+
+func getChapters(n int, source scraper.MangaSource) {
+	results, err := source.Search()
+	if err != nil {
+		log.Fatal(err)
+	}
+	result := getMatchFromSearchResults(results)
+	source.SetManga(result)
+
+	resultsChan := source.ScrapeChapters(n)
+	startDownloads(n, len(*source.GetArgs()), resultsChan)
+}
+
+func getVolumes(n int, source scraper.MangaSource) {
+	results, err := source.Search()
+	if err != nil {
+		log.Fatal(err)
+	}
+	result := getMatchFromSearchResults(results)
+	source.SetManga(result)
+
+	count, resultsChan := source.ScrapeVolumes(n)
+	if count.Err != nil {
+		log.Fatal(err)
+	}
+	startDownloads(n, count.ChapterCount, resultsChan)
 }

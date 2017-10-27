@@ -28,8 +28,8 @@ type FoxManga struct {
 type foxChapter struct {
 	mangaId    string
 	chapterUrl string
-	manga      string //name of the manga
-	chapter    string
+	mangaName  string //name of the manga
+	chapterId  string
 
 	volume    string            //what volume the chapter belongs to - used when scraping volumes
 	volumeDoc *goquery.Document // volume doc if any so we don't have to get the doc again
@@ -44,8 +44,8 @@ func (d *FoxManga) ScrapeChapters(n int) *chan ScrapeResult {
 		for _, chapter := range *d.Args {
 			ch := &foxChapter{
 				chapterUrl: d.MangaID,
-				manga:      d.MangaName,
-				chapter:    strconv.Itoa(chapter),
+				mangaName:  d.MangaName,
+				chapterId:  strconv.Itoa(chapter),
 			}
 			workQueue <- &scrapeJob{chapter: ch}
 		}
@@ -80,8 +80,8 @@ func (d *FoxManga) ScrapeVolumes(n int) (VlmChapterCount, *chan ScrapeResult) {
 		for volumeTitle, chapters := range volumeMap {
 			for _, chapter := range chapters {
 				ch := &foxChapter{
-					manga:     d.MangaName,
-					chapter:   chapter,
+					mangaName: d.MangaName,
+					chapterId: chapter,
 					volume:    volumeTitle,
 					volumeDoc: doc,
 				}
@@ -137,8 +137,8 @@ func (c *foxChapter) getChapter() (Chapter, error) {
 	var chapterPages []ChapterPage
 
 	doc.Find("ul.chlist li").EachWithBreak(func(i int, s *goquery.Selection) bool {
-		chID := strings.TrimPrefix(s.Find("a").Text(), c.manga+" ")
-		if c.chapter == chID { // search for the matching chapter in the manga's chapter catalogue
+		chID := strings.TrimPrefix(s.Find("a").Text(), c.mangaName+" ")
+		if c.chapterId == chID { // search for the matching chapter in the manga's chapter catalogue
 			page1, _ = s.Find("a").Last().Attr("href")
 			return false
 		}
@@ -163,10 +163,10 @@ func (c *foxChapter) getChapter() (Chapter, error) {
 	})
 
 	if len(urls) == 0 { //if zero something went wrong
-		return Chapter{}, errors.New("OOPS. CAN'T GET DIS: " + c.chapter)
+		return Chapter{}, errors.New("OOPS. CAN'T GET DIS: " + c.chapterId)
 	}
 
-	fmt.Printf("%v %v: Getting the chapter image urls\n", c.manga, c.chapter)
+	fmt.Printf("%v %v: Getting the chapter image urls\n", c.mangaName, c.chapterId)
 
 	for i, url := range urls[:len(urls)-1] { //range over the slice..leave the last item out cause it's mostly always not valid
 		doc, err = makeDocRequest(url) //open a chapter page
@@ -178,7 +178,16 @@ func (c *foxChapter) getChapter() (Chapter, error) {
 		}
 	}
 
-	return Chapter{MangaName: c.manga, ChapterTitle: <-titleChan, VolumeTitle: c.volume, ChapterPages: chapterPages}, nil
+	chapterTitle := <-titleChan
+	chapter := Chapter{
+		MangaName:    c.mangaName,
+		ChapterTitle: fmt.Sprintf("%s: %s", c.chapterId, chapterTitle),
+		VolumeTitle:  c.volume,
+		ChapterPages: chapterPages,
+		SourceName:   "MangaFox",
+	}
+
+	return chapter, nil
 }
 
 func (d *FoxManga) SetManga(manga Manga) {

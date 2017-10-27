@@ -5,9 +5,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -17,11 +15,6 @@ import (
 
 	scraper "github.com/freddieptf/manga-scraper/scraper"
 )
-
-type imgItem struct {
-	URL string
-	ID  int
-}
 
 func getRange(vals *[]string) *[]int {
 	chapters := []int{}
@@ -80,25 +73,6 @@ scanDem:
 	}
 	match := results[id]
 	return match
-}
-
-func (item *imgItem) downloadImage(path string) error {
-	response, err := http.Get(item.URL)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return err
-	}
-
-	imgPath := filepath.Join(path, strconv.Itoa(item.ID)+".jpg")
-	err = ioutil.WriteFile(imgPath, body, 0655)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func cbzify(folderPath string) error {
