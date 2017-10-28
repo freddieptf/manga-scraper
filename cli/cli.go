@@ -86,7 +86,7 @@ func getVolumes(n int, source scraper.MangaSource) {
 
 	count, resultsChan := source.ScrapeVolumes(n)
 	if count.Err != nil {
-		log.Fatal(err)
+		log.Fatalf("Encountered an error while trying to scrape volumes : err %v\n", count.Err)
 	}
 	startDownloads(n, count.ChapterCount, resultsChan)
 }

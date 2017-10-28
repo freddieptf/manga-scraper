@@ -71,7 +71,12 @@ func (d *FoxManga) ScrapeVolumes(n int) (VlmChapterCount, *chan ScrapeResult) {
 		return vlmChapterCount, nil
 	}
 
-	volumeMap := findFoxVolumes(doc, d)
+	volumeMap, err := findFoxVolumes(doc, d)
+	if err != nil {
+		vlmChapterCount.Err = err
+		return vlmChapterCount, nil
+	}
+
 	for _, chapters := range volumeMap {
 		vlmChapterCount.ChapterCount += len(chapters)
 	}
@@ -96,14 +101,17 @@ func (d *FoxManga) ScrapeVolumes(n int) (VlmChapterCount, *chan ScrapeResult) {
 	return vlmChapterCount, &resultChan
 }
 
-func findFoxVolumes(doc *goquery.Document, d *FoxManga) map[string][]string {
+func findFoxVolumes(doc *goquery.Document, d *FoxManga) (map[string][]string, error) {
 	volumes := make(map[string][]string)
+	var errr error
 	doc.Find("div.slide").Each(func(i int, s *goquery.Selection) {
 		for _, v := range *d.Args {
 			st := strings.Split(s.Find("h3.volume").Text(), " Chapter ")
 			vi, err := strconv.Atoi(strings.Split(st[0], "Volume ")[1])
 			if err != nil {
-				log.Printf("%v\n", err)
+				log.Println(err)
+				errr = err
+				return
 			}
 			if v == vi {
 				volumes[st[0]] = []string{}
@@ -115,7 +123,7 @@ func findFoxVolumes(doc *goquery.Document, d *FoxManga) map[string][]string {
 			}
 		}
 	})
-	return volumes
+	return volumes, errr
 }
 
 func (c *foxChapter) getChapter() (Chapter, error) {
