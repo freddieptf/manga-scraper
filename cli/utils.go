@@ -1,51 +1,41 @@
-package main
+package cli
 
 import (
 	"archive/zip"
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
+
+	scraper "github.com/freddieptf/manga-scraper/scraper"
 )
 
-type imgItem struct {
-	URL string
-	ID  int
-}
-
-type searchResult struct {
-	manga, mangaID string
-}
-
-func GetRange(vals *[]string) *[]int {
-	var x, y int
-	var err error
-	var chapters []int
+func getRange(vals *[]string) *[]int {
+	chapters := []int{}
 	for _, val := range *vals {
 		if strings.Contains(val, "-") {
 			chs := strings.Split(val, "-")
-			x, err = strconv.Atoi(chs[0])
-			if err != nil {
-				log.Printf("%v could not be converted to a chapter.\n", val)
-				log.Fatal(err)
+			chInts := []int{}
+			for _, chapter := range chs {
+				x, err := strconv.Atoi(chapter)
+				if err != nil {
+					log.Printf("%v could not be converted to a chapter.\n", chapter)
+					log.Fatal(err)
+				}
+				chInts = append(chInts, x)
 			}
-			y, err = strconv.Atoi(chs[1])
-			if err != nil {
-				log.Printf("%v could not be converted to a chapter.\n", val)
-				log.Fatal(err)
-			}
-			for i := x; i <= y; i++ {
+			sort.Ints(chInts)
+			for i := chInts[0]; i <= chInts[len(chInts)-1]; i++ {
 				chapters = append(chapters, i)
 			}
 		} else {
-			x, err = strconv.Atoi(val)
+			x, err := strconv.Atoi(val)
 			if err != nil {
 				log.Printf("%v could not be converted to a chapter.\n", val)
 				log.Fatal(err)
@@ -53,16 +43,14 @@ func GetRange(vals *[]string) *[]int {
 			chapters = append(chapters, x)
 		}
 	}
-
-	fmt.Printf("%v\n", chapters)
-
+	fmt.Printf("chapters: %v\n", chapters)
 	return &chapters
 }
 
-func getMatchFromSearchResults(results map[int]searchResult) searchResult {
+func getMatchFromSearchResults(results []scraper.Manga) scraper.Manga {
 	fmt.Printf("Id \t Manga\n")
 	for i, m := range results {
-		fmt.Printf("%d \t %s\n", i, m.manga)
+		fmt.Printf("%d \t %s\n", i, m.MangaName)
 	}
 
 	myScanner := bufio.NewScanner(os.Stdin)
@@ -79,31 +67,12 @@ scanDem:
 		break
 	}
 	//get the matching id
-	match, exists := results[id]
-	if !exists {
+	if id > len(results) {
 		fmt.Printf("Insert one of the Ids in the results, please: ")
 		goto scanDem
 	}
+	match := results[id]
 	return match
-}
-
-func (item *imgItem) downloadImage(path string) error {
-	response, err := http.Get(item.URL)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return err
-	}
-
-	imgPath := filepath.Join(path, strconv.Itoa(item.ID)+".jpg")
-	err = ioutil.WriteFile(imgPath, body, 0655)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func cbzify(folderPath string) error {
