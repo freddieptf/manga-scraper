@@ -9,6 +9,7 @@ type scrapeJob struct {
 }
 
 type scraper struct {
+	jobChan           chan *scrapeJob
 	scrapeResultsChan *chan ScrapeResult
 	quitChan          chan bool
 }
@@ -18,28 +19,16 @@ type ScrapeResult struct {
 	Err     error
 }
 
-var scrapeJobChan chan *scrapeJob
-
-func startScraping(maxScrapers int, workQueue chan *scrapeJob, resultChan *chan ScrapeResult) {
-
-	scrapeJobChan = make(chan *scrapeJob, maxScrapers)
-
+func startScrapers(maxScrapers int, jobChan chan *scrapeJob, resultChan *chan ScrapeResult) {
 	for i := 0; i < maxScrapers; i++ {
-		scraper := newScraper(resultChan)
+		scraper := newScraper(jobChan, resultChan)
 		scraper.starto()
 	}
-
-	go func() {
-		for job := range workQueue {
-			go func(job *scrapeJob) {
-				scrapeJobChan <- job
-			}(job)
-		}
-	}()
 }
 
-func newScraper(resultChan *chan ScrapeResult) *scraper {
+func newScraper(scrapeJobChan chan *scrapeJob, resultChan *chan ScrapeResult) *scraper {
 	return &scraper{
+		jobChan:           scrapeJobChan,
 		scrapeResultsChan: resultChan,
 		quitChan:          make(chan bool),
 	}
@@ -50,7 +39,7 @@ func (scraper *scraper) starto() {
 	go func() {
 		for {
 			select {
-			case job := <-scrapeJobChan:
+			case job := <-scraper.jobChan:
 				ch, err := job.chapter.getChapter()
 				*scraper.scrapeResultsChan <- ScrapeResult{Chapter: ch, Err: err}
 			case <-scraper.quitChan:

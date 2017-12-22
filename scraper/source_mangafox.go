@@ -37,8 +37,10 @@ type foxChapter struct {
 
 //GetFromFox gets manga chapters from mangafox
 func (d *FoxManga) ScrapeChapters(n int) *chan ScrapeResult {
-	workQueue := make(chan *scrapeJob, n)
+	scrapeJobChan := make(chan *scrapeJob, n)
 	resultChan := make(chan ScrapeResult)
+
+	startScrapers(n, scrapeJobChan, &resultChan)
 
 	go func() {
 		for _, chapter := range *d.Args {
@@ -47,12 +49,9 @@ func (d *FoxManga) ScrapeChapters(n int) *chan ScrapeResult {
 				mangaName:  d.MangaName,
 				chapterId:  strconv.Itoa(chapter),
 			}
-			workQueue <- &scrapeJob{chapter: ch}
+			scrapeJobChan <- &scrapeJob{chapter: ch}
 		}
-		close(workQueue)
 	}()
-
-	startScraping(n, workQueue, &resultChan)
 
 	return &resultChan
 
@@ -60,7 +59,7 @@ func (d *FoxManga) ScrapeChapters(n int) *chan ScrapeResult {
 
 //GetVolumeFromFox gets manga volumes from Mangafox
 func (d *FoxManga) ScrapeVolumes(n int) (VlmChapterCount, *chan ScrapeResult) {
-	workQueue := make(chan *scrapeJob, n)
+	scrapeJobChan := make(chan *scrapeJob, n)
 	resultChan := make(chan ScrapeResult)
 	vlmChapterCount := VlmChapterCount{ChapterCount: 0}
 
@@ -81,6 +80,8 @@ func (d *FoxManga) ScrapeVolumes(n int) (VlmChapterCount, *chan ScrapeResult) {
 		vlmChapterCount.ChapterCount += len(chapters)
 	}
 
+	startScrapers(n, scrapeJobChan, &resultChan)
+
 	go func() {
 		for volumeTitle, chapters := range volumeMap {
 			for _, chapter := range chapters {
@@ -90,13 +91,10 @@ func (d *FoxManga) ScrapeVolumes(n int) (VlmChapterCount, *chan ScrapeResult) {
 					volume:    volumeTitle,
 					volumeDoc: doc,
 				}
-				workQueue <- &scrapeJob{chapter: ch}
+				scrapeJobChan <- &scrapeJob{chapter: ch}
 			}
 		}
-		close(workQueue)
 	}()
-
-	startScraping(n, workQueue, &resultChan)
 
 	return vlmChapterCount, &resultChan
 }

@@ -29,8 +29,11 @@ type readerChapter struct {
 // Scrape manga chapters from mangareader
 // params: n - the number of active parallel scrapers to use
 func (d *ReaderManga) ScrapeChapters(n int) *chan ScrapeResult {
-	workQueue := make(chan *scrapeJob, n)
+
+	scrapeJobChan := make(chan *scrapeJob, n)
 	resultChan := make(chan ScrapeResult)
+
+	startScrapers(n, scrapeJobChan, &resultChan)
 
 	go func() {
 		for _, chapter := range *d.Args {
@@ -40,12 +43,9 @@ func (d *ReaderManga) ScrapeChapters(n int) *chan ScrapeResult {
 				chapterId:  strconv.Itoa(chapter),
 				chapterUrl: mangaReaderURL + d.MangaID + "/" + strconv.Itoa(chapter),
 			}
-			workQueue <- &scrapeJob{chapter: ch}
+			scrapeJobChan <- &scrapeJob{chapter: ch}
 		}
-		close(workQueue)
 	}()
-
-	startScraping(n, workQueue, &resultChan)
 
 	return &resultChan
 }
