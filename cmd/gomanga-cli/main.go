@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	scraper "github.com/freddieptf/manga-scraper/pkg/scraper"
 )
@@ -35,7 +36,7 @@ func main() {
 			"You will get errors or missing chapter images if you set it any higher with mangafox as source.")
 		source = &scraper.FoxManga{}
 		source.SetManga(scraper.Manga{MangaName: *manga})
-		source.SetArgs(getRange(&args))
+		source.SetArgs(getChapterRangeFromArgs(&args))
 		if *vlm { //if we're downloading volumes
 			getVolumes(n, source)
 		} else {
@@ -48,7 +49,7 @@ func main() {
 		}
 		source = &scraper.ReaderManga{}
 		source.SetManga(scraper.Manga{MangaName: *manga})
-		source.SetArgs(getRange(&args))
+		source.SetArgs(getChapterRangeFromArgs(&args))
 		getChapters(n, source)
 	default:
 		flag.PrintDefaults()
@@ -62,7 +63,7 @@ func getChapters(n int, source scraper.MangaSource) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	result := getMatchFromSearchResults(results)
+	result := getMatchFromSearchResults(readWrite{os.Stdin, os.Stdout}, results)
 	source.SetManga(result)
 
 	resultsChan := source.ScrapeChapters(n)
@@ -74,7 +75,7 @@ func getVolumes(n int, source scraper.MangaSource) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	result := getMatchFromSearchResults(results)
+	result := getMatchFromSearchResults(readWrite{os.Stdin, os.Stdout}, results)
 	source.SetManga(result)
 
 	count, resultsChan := source.ScrapeVolumes(n)
