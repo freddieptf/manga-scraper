@@ -11,6 +11,7 @@ var (
 	readerFlag         = flag.Bool("mr", false, "search mangaReader for the manga")
 	vlm                = flag.Bool("vlm", false, "use with -mf when you want to download a volume(s)")
 	update             = flag.Bool("update", false, "use to update the manga in your local library to the latest chapter")
+	archive            = flag.Bool("cbz", true, "save to cbz file format")
 	maxActiveDownloads = flag.Int("n", 1, "max number of concurrent downloads")
 	manga              = flag.String("manga", "", "the name of the manga")
 )
@@ -28,6 +29,7 @@ func main() {
 	conf := cli.CliConf{
 		IsSourceFox:           foxFlag,
 		IsSourceRdr:           readerFlag,
+		Archive:               archive,
 		Vlms:                  vlm,
 		MangaName:             manga,
 		ChapterArgs:           &args,

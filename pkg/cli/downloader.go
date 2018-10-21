@@ -12,9 +12,14 @@ import (
 	"sync"
 )
 
+type chapter struct {
+	scraper.Chapter
+	archive bool
+}
+
 type chapterDownloader struct {
 	id      int
-	jobChan *chan scraper.Chapter
+	jobChan *chan chapter
 	quit    chan struct{}
 	wg      *sync.WaitGroup
 }
@@ -22,7 +27,7 @@ type chapterDownloader struct {
 func newChapterDownloader(
 	id int,
 	wg *sync.WaitGroup,
-	jobChan *chan scraper.Chapter) *chapterDownloader {
+	jobChan *chan chapter) *chapterDownloader {
 
 	return &chapterDownloader{
 		id:      id,
@@ -42,9 +47,16 @@ func (chDown *chapterDownloader) listen() {
 				path, err := downloadChapter(&chapter)
 				if err != nil {
 					log.Printf("couldn't get %s : err %v\n", chapter.ChapterTitle, err)
+				} else {
+					if chapter.archive {
+						err = cbzify(path)
+						if err != nil {
+							log.Printf("could not create cbz, %v\n", err)
+						}
+					}
 				}
-				log.Printf("downloader %d: Download done (%s): vlm %s\n", chDown.id, path, chapter.VolumeTitle)
 				chDown.wg.Done()
+				log.Printf("downloader %d: Download done (%s): vlm %s\n", chDown.id, path, chapter.VolumeTitle)
 			case <-chDown.quit:
 				return
 			}
@@ -52,7 +64,7 @@ func (chDown *chapterDownloader) listen() {
 	}()
 }
 
-func startDownloads(n int, wg *sync.WaitGroup, resultsChan *chan scraper.Chapter) {
+func startDownloads(n int, wg *sync.WaitGroup, resultsChan *chan chapter) {
 	// init our download workers right here boy
 	for i := 0; i < n; i++ {
 		chDownloader := newChapterDownloader(i+1, wg, resultsChan)
@@ -72,7 +84,7 @@ func createMangaSourceDir(sourceName string) (string, error) {
 }
 
 // create a chapter dir in the provided manga source dir path, return the its path
-func createChapterDir(sourceDirPath *string, chapter *scraper.Chapter) (string, error) {
+func createChapterDir(sourceDirPath *string, chapter *chapter) (string, error) {
 	var chapterPath string
 	if chapter.VolumeTitle == "" {
 		chapterPath = filepath.Join(*sourceDirPath, chapter.MangaName, chapter.ChapterTitle)
@@ -107,8 +119,7 @@ func saveImageToDisk(path string, img *[]byte) error {
 	return ioutil.WriteFile(path, *img, 0655)
 }
 
-func downloadChapter(
-	chapter *scraper.Chapter) (string, error) {
+func downloadChapter(chapter *chapter) (string, error) {
 
 	sourceDirPath, err := createMangaSourceDir(chapter.SourceName)
 	if err != nil {

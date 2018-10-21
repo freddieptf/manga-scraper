@@ -12,3 +12,8 @@ type Chapter struct {
 	SourceName   string
 	ChapterPages []ChapterPage
 }
+
+type Manga struct {
+	MangaName string
+	MangaID   string
+}
