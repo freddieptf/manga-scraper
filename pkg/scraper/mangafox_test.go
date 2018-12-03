@@ -9,7 +9,7 @@ import (
 
 // return the results and the search query
 func getTestSearchResults(t *testing.T) ([]Manga, string) {
-	testManga := "kengan"
+	testManga := "astro"
 	foxSource := &FoxManga{}
 	results, err := foxSource.Search(testManga)
 	if err != nil {
@@ -41,7 +41,7 @@ func testGetChapterUrlFromListing(t *testing.T) (chapterURL string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	chapterURL, chapterTitle := getChapterUrlFromListing("7.5", doc)
+	chapterURL, chapterTitle := getChapterUrlFromListing("1", doc)
 	if _, err := url.ParseRequestURI(chapterURL); err != nil {
 		t.Fatalf("chaterURL=%s : %v\n", chapterURL, err)
 	}
@@ -87,15 +87,16 @@ func TestFoxSearch(t *testing.T) {
 	}
 }
 
-func TestFoxGetChapter(t *testing.T) {
-	results, _ := getTestSearchResults(t)
-	manga := results[0]
-	foxSource := &FoxManga{}
-	chapter, err := foxSource.GetChapter(manga.MangaID, "1")
-	if err != nil {
-		t.Error(err)
-	}
-	if len(chapter.ChapterPages) <= 0 {
-		t.Error("no chapter pages returned")
-	}
-}
+// too much? @TestGetFoxChPageImgUrl might just be enough
+// func TestFoxGetChapter(t *testing.T) {
+// 	results, _ := getTestSearchResults(t)
+// 	manga := results[0]
+// 	foxSource := &FoxManga{}
+// 	chapter, err := foxSource.GetChapter(manga.MangaID, "1")
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	if len(chapter.ChapterPages) <= 0 {
+// 		t.Error("no chapter pages returned")
+// 	}
+// }

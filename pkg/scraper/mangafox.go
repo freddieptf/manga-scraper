@@ -76,7 +76,7 @@ func getChapterUrlFromListing(chapterID string, doc *goquery.Document) (chapterU
 		if inChID, err := strconv.ParseFloat(chapterID, 32); err == nil { // search for the matching chapter in the manga's chapter catalogue
 			if inChID == chID {
 				chapterUrl = fmt.Sprintf("%s%s", foxURL, chUrl)
-				chapterTitle = s.Find("p.title1").Text()
+				chapterTitle = s.Find("p").First().Text()
 				return false // break out of loop
 			}
 		}
