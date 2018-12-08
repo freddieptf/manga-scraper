@@ -40,39 +40,55 @@ func makeDocRequest(url string) (*goquery.Document, error) {
 }
 
 func makeDocRequestWebKit(url string) (*goquery.Document, error) {
+	runtime.LockOSThread()
 	gtk.Init(nil)
+
+	docChan := make(chan *goquery.Document, 1)
+	errChan := make(chan error, 1)
+
 	go func() {
-		runtime.LockOSThread()
-		gtk.Main()
+		ctx := New()
+		view := ctx.NewView()
+
+		settings := view.Settings()
+		settings.SetUserAgentWithApplicationDetails("Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:62.0)", "Firefox/62.0")
+
+		defer view.Close()
+		view.Open(url)
+		err := view.Wait()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to load URL: %s\n", err)
+			docChan <- nil
+			errChan <- err
+			gtk.MainQuit()
+		}
+
+		doc, err := getDocFromWebView(view)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "couldn't get doc from webview, %v\n", err)
+			docChan <- nil
+			errChan <- err
+			gtk.MainQuit()
+		}
+
+		err = processDoc(url, doc, view)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Couldn't process doc: %s\n", err)
+			docChan <- nil
+			errChan <- err
+			gtk.MainQuit()
+		}
+
+		docChan <- doc
+		errChan <- nil
+		gtk.MainQuit()
+
 	}()
 
-	ctx := New()
-	view := ctx.NewView()
+	gtk.Main()
+	runtime.UnlockOSThread()
 
-	settings := view.Settings()
-	settings.SetUserAgentWithApplicationDetails("Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:62.0)", "Firefox/62.0")
-
-	defer view.Close()
-	view.Open(url)
-	err := view.Wait()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to load URL: %s\n", err)
-		return nil, err
-	}
-
-	doc, err := getDocFromWebView(view)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "couldn't get doc from webview, %v\n", err)
-		return nil, err
-	}
-
-	err = processDoc(url, doc, view)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Couldn't process doc: %s\n", err)
-		return nil, err
-	}
-
-	return doc, nil
+	return <-docChan, <-errChan
 
 }
 

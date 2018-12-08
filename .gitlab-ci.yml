@@ -1,4 +1,4 @@
-image: golang:latest
+image: registry.gitlab.com/freddieptf/go-ubuntu-image:xenial
 
 variables:
   REPO_NAME: github.com/freddieptf/manga-scraper
@@ -10,11 +10,13 @@ variables:
 # repository in /go/src/gitlab.com/namespace/project
 # Thus, making a symbolic link corrects this.
 before_script:
-  - apt-get update && apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libglib2.0-dev libjavascriptcoregtk-3.0-dev libcairo2-dev libcairo-gobject2 libgdk3.0-cil libpango1.0-0 libpangocairo-1.0-0 fontconfig 
+  - apt-get update && apt-get install -y xvfb libwebkit2gtk-3.0-dev libjavascriptcoregtk-3.0-dev libgdk3.0-cil libpango1.0-0 fontconfig libgtk-3-dev libcairo2-dev libglib2.0-dev
+  - Xvfb :99 &
+  - export DISPLAY=:99
   - mkdir -p $GOPATH/src/$(dirname $REPO_NAME)
   - ln -svf $CI_PROJECT_DIR $GOPATH/src/$REPO_NAME
   - cd $GOPATH/src/$REPO_NAME
-  - go get -v ./...
+  - go get -tags gtk_3_18 -v ./...
 
 stages:
     - test
@@ -24,13 +26,14 @@ format:
     stage: test
     script:
       - go fmt $(go list ./...)
-      - go vet $(go list ./...)
-      - go test -v -timeout 200s $(go list ./...)
+      - go vet -tags gtk_3_18 $(go list ./...)
+      - go test -tags gtk_3_18 -v -timeout 200s $(go list ./...)
 
 compile:
     stage: build
     script:
-      - go build -race -ldflags "-extldflags '-static'" -o $CI_PROJECT_DIR/manga-scraper
+    # dynamically linked binary
+      - go build -tags gtk_3_18 -race -o $CI_PROJECT_DIR/manga-scraper ./cmd/gomanga-cli
     artifacts:
       paths:
         - manga-scraper
