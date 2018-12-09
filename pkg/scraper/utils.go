@@ -3,10 +3,9 @@ package scraper
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/freddieptf/go-webkit2/webkit2"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
-	"github.com/sourcegraph/go-webkit2/webkit2"
-	"github.com/sourcegraph/webloop"
 	"golang.org/x/net/html"
 	"net/http"
 	"net/url"
@@ -47,7 +46,7 @@ func makeDocRequestWebKit(url string) (*goquery.Document, error) {
 		gtk.Main()
 	}()
 
-	ctx := webloop.New()
+	ctx := New()
 	view := ctx.NewView()
 
 	settings := view.Settings()
@@ -77,7 +76,7 @@ func makeDocRequestWebKit(url string) (*goquery.Document, error) {
 
 }
 
-func getDocFromWebView(view *webloop.View) (*goquery.Document, error) {
+func getDocFromWebView(view *webviewWrapper) (*goquery.Document, error) {
 	res, err := view.EvaluateJavaScript("document.documentElement.innerHTML")
 	if err != nil {
 		return nil, err
@@ -90,7 +89,7 @@ func getDocFromWebView(view *webloop.View) (*goquery.Document, error) {
 	return doc, nil
 }
 
-func processDoc(sourceUrl string, doc *goquery.Document, view *webloop.View) error {
+func processDoc(sourceUrl string, doc *goquery.Document, view *webviewWrapper) error {
 	host, err := url.ParseRequestURI(sourceUrl)
 	if err != nil {
 		return err
