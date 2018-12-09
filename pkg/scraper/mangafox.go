@@ -87,8 +87,9 @@ func getChapterUrlFromListing(chapterID string, doc *goquery.Document) (chapterU
 
 // get all the chapter page urls from the select component on the chapter page
 func getFoxChPageUrls(doc *goquery.Document) (chapterPageUrls []string) {
-	lastPageSelection := doc.Find("div.pager-list-left a").Eq(-2)
+	lastPageSelection := doc.Find("div.pager-list-left > span > a").Eq(-2)
 	lastPage, _ := strconv.Atoi(lastPageSelection.AttrOr("data-page", "0")) // potential
+	fmt.Printf("last page %d\n", lastPage)
 	if lastPage == 0 {
 		return
 	}
@@ -113,12 +114,25 @@ func getFoxChPageImgUrl(chapterPageUrl string) (imgURL string) {
 	return
 }
 
-func (foxManga *FoxManga) GetChapter(mangaID, chapterID string) (Chapter, error) {
-
-	doc, err := makeDocRequest(fmt.Sprintf("%s/%s", foxURL, mangaID))
+func openFoxPage(url string) (doc *goquery.Document, err error) {
+	doc, err = makeDocRequest(url)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	if doc.Has(".detail-block-content") != nil { // blocked for underage
+		doc, err = makeDocRequestWebKit(url)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	return
+}
+
+func (foxManga *FoxManga) GetChapter(mangaID, chapterID string) (Chapter, error) {
+
+	mangaPageUrl := fmt.Sprintf("%s/%s", foxURL, mangaID)
+	doc, err := openFoxPage(mangaPageUrl)
 
 	mangaDetailsChan := make(chan mangaDetails)
 	go func(doc *goquery.Document) {
@@ -127,7 +141,7 @@ func (foxManga *FoxManga) GetChapter(mangaID, chapterID string) (Chapter, error)
 
 	chapterUrl, chapterTitle := getChapterUrlFromListing(chapterID, doc)
 
-	doc, err = makeDocRequest(chapterUrl) // open the chapter page
+	doc, err = openFoxPage(chapterUrl) // open the chapter page
 	if err != nil {
 		log.Printf("couldn't open chapter page %v\n", err)
 		return Chapter{}, err

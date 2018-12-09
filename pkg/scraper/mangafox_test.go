@@ -9,7 +9,7 @@ import (
 
 // return the results and the search query
 func getTestSearchResults(t *testing.T) ([]Manga, string) {
-	testManga := "astro"
+	testManga := "endless"
 	foxSource := &FoxManga{}
 	results, err := foxSource.Search(testManga)
 	if err != nil {
@@ -23,8 +23,8 @@ func getTestSearchResults(t *testing.T) ([]Manga, string) {
 
 func TestFoxGetMangaDetails(t *testing.T) {
 	results, _ := getTestSearchResults(t)
-	manga := results[0]
-	doc, err := makeDocRequest(fmt.Sprintf("%s/%s", foxURL, manga.MangaID))
+	manga := results[5]
+	doc, err := openFoxPage(fmt.Sprintf("%s/%s", foxURL, manga.MangaID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,8 +36,8 @@ func TestFoxGetMangaDetails(t *testing.T) {
 
 func testGetChapterUrlFromListing(t *testing.T) (chapterURL string) {
 	results, _ := getTestSearchResults(t)
-	manga := results[0]
-	doc, err := makeDocRequest(fmt.Sprintf("%s/%s", foxURL, manga.MangaID))
+	manga := results[5]
+	doc, err := openFoxPage(fmt.Sprintf("%s/%s", foxURL, manga.MangaID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func testGetChapterUrlFromListing(t *testing.T) (chapterURL string) {
 
 func testGetFoxChPageUrls(t *testing.T) (chapterPageUrls []string) {
 	chapterURL := testGetChapterUrlFromListing(t)
-	doc, err := makeDocRequest(chapterURL)
+	doc, err := openFoxPage(chapterURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,16 +87,20 @@ func TestFoxSearch(t *testing.T) {
 	}
 }
 
-// too much? @TestGetFoxChPageImgUrl might just be enough
-// func TestFoxGetChapter(t *testing.T) {
-// 	results, _ := getTestSearchResults(t)
-// 	manga := results[0]
-// 	foxSource := &FoxManga{}
-// 	chapter, err := foxSource.GetChapter(manga.MangaID, "1")
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// 	if len(chapter.ChapterPages) <= 0 {
-// 		t.Error("no chapter pages returned")
-// 	}
-// }
+func TestFoxGetChapter(t *testing.T) {
+	results, _ := getTestSearchResults(t)
+	manga := results[5]
+	foxSource := &FoxManga{}
+	chapter, err := foxSource.GetChapter(manga.MangaID, "4")
+	if err != nil {
+		t.Error(err)
+	}
+	if len(chapter.ChapterPages) <= 0 {
+		t.Error("no chapter pages returned")
+	}
+	for _, page := range chapter.ChapterPages {
+		if _, err := url.ParseRequestURI(page.Url); err != nil {
+			t.Errorf("invalid page url %s\n", page.Url)
+		}
+	}
+}

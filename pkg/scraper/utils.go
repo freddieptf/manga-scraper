@@ -3,10 +3,13 @@ package scraper
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/sourcegraph/go-webkit2/webkit2"
 	"github.com/sourcegraph/webloop"
 	"golang.org/x/net/html"
 	"net/http"
+	"net/url"
 	"os"
 	"runtime"
 	"strings"
@@ -57,17 +60,67 @@ func makeDocRequestWebKit(url string) (*goquery.Document, error) {
 		fmt.Fprintf(os.Stderr, "Failed to load URL: %s\n", err)
 		return nil, err
 	}
+
+	doc, err := getDocFromWebView(view)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "couldn't get doc from webview, %v\n", err)
+		return nil, err
+	}
+
+	err = processDoc(url, doc, view)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Couldn't process doc: %s\n", err)
+		return nil, err
+	}
+
+	return doc, nil
+
+}
+
+func getDocFromWebView(view *webloop.View) (*goquery.Document, error) {
 	res, err := view.EvaluateJavaScript("document.documentElement.innerHTML")
 	if err != nil {
-		fmt.Printf("damn, %s\n", err)
 		return nil, err
 	}
 	node, err := html.Parse(strings.NewReader(res.(string)))
 	if err != nil {
-		fmt.Printf("%v\n", err)
 		return nil, err
 	}
 	doc := goquery.NewDocumentFromNode(node)
 	return doc, nil
+}
 
+func processDoc(sourceUrl string, doc *goquery.Document, view *webloop.View) error {
+	host, err := url.ParseRequestURI(sourceUrl)
+	if err != nil {
+		return err
+	}
+
+	foxURLURL, _ := url.ParseRequestURI(foxURL)
+	loadFinished := make(chan interface{}, 1)
+	switch host.Host {
+	case foxURLURL.Host:
+		if doc.Find(".detail-block-content").Length() > 0 {
+
+			view.WebView.Connect("load-changed", func(_ *glib.Object, i int) {
+				loadEvent := webkit2.LoadEvent(i)
+				switch loadEvent {
+				case webkit2.LoadFinished:
+					fmt.Println("load finished")
+					loadFinished <- 1
+				}
+			})
+			_, err := view.EvaluateJavaScript("if(typeof $('#checkAdult')[0] !== 'undefined'){ $('#checkAdult')[0].click();}location.reload();")
+			if err != nil {
+				return err
+			}
+
+			<-loadFinished
+
+			d, err := getDocFromWebView(view)
+			*doc = *d
+
+		}
+	}
+	return nil
 }
