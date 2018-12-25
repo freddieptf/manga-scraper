@@ -8,8 +8,8 @@ import (
 )
 
 // return the results and the search query
-func getTestSearchResults(t *testing.T) ([]Manga, string) {
-	testManga := "endless"
+func getTestSearchResults(t *testing.T) (Manga, string) {
+	testManga := "kengan"
 	foxSource := &FoxManga{}
 	results, err := foxSource.Search(testManga)
 	if err != nil {
@@ -18,12 +18,11 @@ func getTestSearchResults(t *testing.T) ([]Manga, string) {
 	if len(results) <= 0 {
 		t.Fatal("search results of length 0")
 	}
-	return results, testManga
+	return results[0], testManga
 }
 
 func TestFoxGetMangaDetails(t *testing.T) {
-	results, _ := getTestSearchResults(t)
-	manga := results[5]
+	manga, _ := getTestSearchResults(t)
 	doc, err := openFoxPage(fmt.Sprintf("%s/%s", foxURL, manga.MangaID))
 	if err != nil {
 		t.Fatal(err)
@@ -35,15 +34,14 @@ func TestFoxGetMangaDetails(t *testing.T) {
 }
 
 func testGetChapterUrlFromListing(t *testing.T) (chapterURL string) {
-	results, _ := getTestSearchResults(t)
-	manga := results[5]
+	manga, _ := getTestSearchResults(t)
 	doc, err := openFoxPage(fmt.Sprintf("%s/%s", foxURL, manga.MangaID))
 	if err != nil {
 		t.Fatal(err)
 	}
 	chapterURL, chapterTitle := getChapterUrlFromListing("1", doc)
 	if _, err := url.ParseRequestURI(chapterURL); err != nil {
-		t.Fatalf("chaterURL=%s : %v\n", chapterURL, err)
+		t.Fatalf("couldn't get chapterURL from listing = '%s' err: %v\n", chapterURL, err)
 	}
 	if chapterTitle == "" {
 		t.Error("returned empty chapter title")
@@ -79,17 +77,14 @@ func TestGetFoxChPageImgUrl(t *testing.T) {
 }
 
 func TestFoxSearch(t *testing.T) {
-	results, query := getTestSearchResults(t)
-	for _, manga := range results {
-		if !strings.Contains(strings.ToLower(manga.MangaName), query) {
-			t.Error("results could be wrong")
-		}
+	manga, query := getTestSearchResults(t)
+	if !strings.Contains(strings.ToLower(manga.MangaName), query) {
+		t.Error("results could be wrong")
 	}
 }
 
 func TestFoxGetChapter(t *testing.T) {
-	results, _ := getTestSearchResults(t)
-	manga := results[5]
+	manga, _ := getTestSearchResults(t)
 	foxSource := &FoxManga{}
 	chapter, err := foxSource.GetChapter(manga.MangaID, "4")
 	if err != nil {

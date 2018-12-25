@@ -65,8 +65,8 @@ func TestGetMatchFromSearchResults(t *testing.T) {
 		input    string
 		expected scraper.Manga
 	}{
-		{[]scraper.Manga{{"test", "/test/url"}, {"test1", "/test/url/1"}}, "2", scraper.Manga{"test1", "/test/url/1"}},
-		{[]scraper.Manga{{"test", "/test/url"}, {"test1", "/test/url/1"}}, "1", scraper.Manga{"test", "/test/url"}},
+		{[]scraper.Manga{{MangaName: "test", MangaID: "/test/url"}, {MangaName: "test1", MangaID: "/test/url/1"}}, "2", scraper.Manga{MangaName: "test1", MangaID: "/test/url/1"}},
+		{[]scraper.Manga{{MangaName: "test", MangaID: "/test/url"}, {MangaName: "test1", MangaID: "/test/url/1"}}, "1", scraper.Manga{MangaName: "test", MangaID: "/test/url"}},
 	}
 
 	for _, arg := range manga {

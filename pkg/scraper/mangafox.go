@@ -119,8 +119,7 @@ func openFoxPage(url string) (doc *goquery.Document, err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	if doc.Has(".detail-block-content") != nil { // blocked for underage
+	if doc.Find(".detail-block-content").Length() > 0 { // blocked for underage
 		doc, err = makeDocRequestWebKit(url)
 		if err != nil {
 			log.Fatal(err)
@@ -133,6 +132,12 @@ func (foxManga *FoxManga) GetChapter(mangaID, chapterID string) (Chapter, error)
 
 	mangaPageUrl := fmt.Sprintf("%s/%s", foxURL, mangaID)
 	doc, err := openFoxPage(mangaPageUrl)
+	if err != nil {
+		log.Printf("couldn't open manga page at %s : %v\n", mangaPageUrl, err)
+		return Chapter{}, err
+	}
+
+	fmt.Println("we opened the manga page")
 
 	mangaDetailsChan := make(chan mangaDetails)
 	go func(doc *goquery.Document) {
@@ -146,6 +151,7 @@ func (foxManga *FoxManga) GetChapter(mangaID, chapterID string) (Chapter, error)
 		log.Printf("couldn't open chapter page %v\n", err)
 		return Chapter{}, err
 	}
+
 	chapterPageUrls := getFoxChPageUrls(doc)
 
 	if len(chapterPageUrls) == 0 { //if zero something went wrong
@@ -154,7 +160,9 @@ func (foxManga *FoxManga) GetChapter(mangaID, chapterID string) (Chapter, error)
 
 	var chapterPages []ChapterPage
 
+	fmt.Println("right herererere")
 	for i, url := range chapterPageUrls[:len(chapterPageUrls)-1] { //range over the slice..leave the last item out cause it's mostly always not valid
+		fmt.Printf("ok getPage %s\n", url)
 		chapterPages = append(chapterPages, ChapterPage{Url: getFoxChPageImgUrl(url), Page: i})
 	}
 
