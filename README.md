@@ -1,5 +1,4 @@
-A little program to scrape/download manga off [mangareader](http://www.mangareader.net/) and [mangafox](http://www.mangafox.me/).
-*Other sources might be added..eventually*
+[![pipeline status](https://gitlab.com/freddieptf/manga-scraper/badges/master/pipeline.svg)](https://gitlab.com/freddieptf/manga-scraper/commits/master)
 
 ```
 go get github.com/freddieptf/manga-scraper
