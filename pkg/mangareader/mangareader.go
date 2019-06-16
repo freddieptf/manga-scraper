@@ -1,4 +1,4 @@
-package scraper
+package mangareader
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/freddieptf/manga-scraper/pkg/scraper"
 )
 
 const (
@@ -28,7 +29,7 @@ func getChPageUrls(doc *goquery.Document) (chapterPageUrls []string) {
 
 // pass in a chapter page url and try and get the url of the image in the page
 func getChPageImgUrl(url string) (imgUrl string) {
-	doc, err := makeDocRequest(url)
+	doc, err := scraper.MakeDocRequest(url)
 	if err != nil {
 		log.Println(err)
 		return
@@ -41,7 +42,7 @@ func getChPageImgUrl(url string) (imgUrl string) {
 }
 
 func getChTitle(mangaID, chapterID string) (title string) {
-	d, e := makeDocRequest(mangaReaderURL + mangaID)
+	d, e := scraper.MakeDocRequest(mangaReaderURL + mangaID)
 	if e != nil {
 		log.Println(e)
 		return
@@ -58,19 +59,19 @@ func getChTitle(mangaID, chapterID string) (title string) {
 	return
 }
 
-func (readerManga *ReaderManga) GetChapter(mangaID, chapterID string) (Chapter, error) {
+func (readerManga *ReaderManga) GetChapter(mangaID, chapterID string) (scraper.Chapter, error) {
 	var (
 		chapterPageUrls []string
-		chapterPages    []ChapterPage
+		chapterPages    []scraper.ChapterPage
 		doc             *goquery.Document
 		err             error
 	)
 
 	chapterUrl := mangaReaderURL + mangaID + "/" + chapterID
 
-	doc, err = makeDocRequest(chapterUrl)
+	doc, err = scraper.MakeDocRequest(chapterUrl)
 	if err != nil {
-		return Chapter{}, err
+		return scraper.Chapter{}, err
 	}
 
 	chapterPageUrls = getChPageUrls(doc)
@@ -84,10 +85,10 @@ func (readerManga *ReaderManga) GetChapter(mangaID, chapterID string) (Chapter, 
 	//scrape the manga pages for the image urls
 	log.Printf("%s: Getting the chapter image urls\n", chapterUrl)
 
-	pageChan := make(chan ChapterPage)
+	pageChan := make(chan scraper.ChapterPage)
 	for i, url := range chapterPageUrls {
 		go func(i int, url string) {
-			pageChan <- ChapterPage{Page: i, Url: getChPageImgUrl(url)}
+			pageChan <- scraper.ChapterPage{Page: i, Url: getChPageImgUrl(url)}
 		}(i, url)
 	}
 
@@ -96,7 +97,7 @@ func (readerManga *ReaderManga) GetChapter(mangaID, chapterID string) (Chapter, 
 	}
 
 	chapterTitle := <-titleChan
-	chapter := Chapter{
+	chapter := scraper.Chapter{
 		MangaName:    "",
 		ChapterTitle: fmt.Sprintf("%s: %s", chapterID, chapterTitle),
 		ChapterPages: chapterPages,
@@ -106,9 +107,9 @@ func (readerManga *ReaderManga) GetChapter(mangaID, chapterID string) (Chapter, 
 	return chapter, nil
 }
 
-func (readerManga *ReaderManga) Search(mangaName string) ([]Manga, error) {
-	doc, err := makeDocRequest(mangaReaderURL + "/alphabetical")
-	results := []Manga{}
+func (readerManga *ReaderManga) Search(mangaName string) ([]scraper.Manga, error) {
+	doc, err := scraper.MakeDocRequest(mangaReaderURL + "/alphabetical")
+	results := []scraper.Manga{}
 	if err != nil {
 		return results, err
 	}
@@ -116,7 +117,7 @@ func (readerManga *ReaderManga) Search(mangaName string) ([]Manga, error) {
 	doc.Find("ul.series_alpha > li > a").Each(func(i int, s *goquery.Selection) {
 		if strings.Contains(strings.ToLower(s.Text()), strings.ToLower(mangaName)) {
 			mid, _ := s.Attr("href")
-			results = append(results, Manga{MangaName: s.Text(), MangaID: mid})
+			results = append(results, scraper.Manga{MangaName: s.Text(), MangaID: mid})
 		}
 	})
 

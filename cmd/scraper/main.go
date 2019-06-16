@@ -4,6 +4,9 @@ import (
 	"flag"
 	"fmt"
 	cli "github.com/freddieptf/manga-scraper/pkg/cli"
+	"github.com/freddieptf/manga-scraper/pkg/fanfox"
+	"github.com/freddieptf/manga-scraper/pkg/mangareader"
+	"os"
 )
 
 var (
@@ -21,21 +24,27 @@ func main() {
 	args := flag.Args()
 
 	if !*foxFlag && !*readerFlag {
-		fmt.Println("No source was provided. See -h for usage. Using mangareader as default instead...")
-		*readerFlag = true
+		fmt.Println("No source was provided.")
+		flag.PrintDefaults()
+		os.Exit(1)
 	}
 
-	// construct a config struct that we'll pass to cli.Run()..blocks until completion
-	conf := cli.CliConf{
-		IsSourceFox:           foxFlag,
-		IsSourceRdr:           readerFlag,
-		Archive:               archive,
-		Vlms:                  vlm,
-		MangaName:             manga,
-		ChapterArgs:           &args,
-		ParallelDownloadLimit: maxActiveDownloads,
+	n := 1 //default num of maxActiveDownloads
+	var source cli.MangaSource
+
+	switch {
+	case *foxFlag:
+		source = &fanfox.FoxManga{}
+	case *readerFlag:
+		if *maxActiveDownloads != 0 {
+			n = *maxActiveDownloads
+		}
+		source = &mangareader.ReaderManga{}
+	default:
+		flag.PrintDefaults()
+		return
 	}
 
-	cli.Run(conf)
+	cli.Get(n, *manga, cli.GetChapterRangeFromArgs(&args), archive, source)
 
 }

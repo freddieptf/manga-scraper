@@ -1,4 +1,4 @@
-package scraper
+package fanfox
 
 import (
 	"errors"
@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/freddieptf/manga-scraper/pkg/scraper"
 )
 
 const (
@@ -115,7 +116,7 @@ func getFoxChPageImgUrl(chapterPageUrl string) (imgURL string) {
 }
 
 func openFoxPage(url string) (doc *goquery.Document, err error) {
-	doc, err = makeDocRequest(url)
+	doc, err = scraper.MakeDocRequest(url)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -128,13 +129,13 @@ func openFoxPage(url string) (doc *goquery.Document, err error) {
 	return
 }
 
-func (foxManga *FoxManga) GetChapter(mangaID, chapterID string) (Chapter, error) {
+func (foxManga *FoxManga) GetChapter(mangaID, chapterID string) (scraper.Chapter, error) {
 
 	mangaPageUrl := fmt.Sprintf("%s/%s", foxURL, mangaID)
 	doc, err := openFoxPage(mangaPageUrl)
 	if err != nil {
 		log.Printf("couldn't open manga page at %s : %v\n", mangaPageUrl, err)
-		return Chapter{}, err
+		return scraper.Chapter{}, err
 	}
 
 	fmt.Println("we opened the manga page")
@@ -149,24 +150,24 @@ func (foxManga *FoxManga) GetChapter(mangaID, chapterID string) (Chapter, error)
 	doc, err = openFoxPage(chapterUrl) // open the chapter page
 	if err != nil {
 		log.Printf("couldn't open chapter page %v\n", err)
-		return Chapter{}, err
+		return scraper.Chapter{}, err
 	}
 
 	chapterPageUrls := getFoxChPageUrls(doc)
 
 	if len(chapterPageUrls) == 0 { //if zero something went wrong
-		return Chapter{}, errors.New("OOPS. CAN'T GET DIS: " + chapterID)
+		return scraper.Chapter{}, errors.New("OOPS. CAN'T GET DIS: " + chapterID)
 	}
 
-	var chapterPages []ChapterPage
+	var chapterPages []scraper.ChapterPage
 
 	fmt.Println("right herererere")
 	for i, url := range chapterPageUrls[:len(chapterPageUrls)-1] { //range over the slice..leave the last item out cause it's mostly always not valid
 		fmt.Printf("ok getPage %s\n", url)
-		chapterPages = append(chapterPages, ChapterPage{Url: getFoxChPageImgUrl(url), Page: i})
+		chapterPages = append(chapterPages, scraper.ChapterPage{Url: getFoxChPageImgUrl(url), Page: i})
 	}
 
-	chapter := Chapter{
+	chapter := scraper.Chapter{
 		MangaName:    (<-mangaDetailsChan).name,
 		ChapterTitle: fmt.Sprintf("%s: %s", chapterID, chapterTitle),
 		ChapterPages: chapterPages,
@@ -177,10 +178,10 @@ func (foxManga *FoxManga) GetChapter(mangaID, chapterID string) (Chapter, error)
 }
 
 // search the mangafox mangalist given a manga name string, returns the collection of results
-func (foxManga *FoxManga) Search(mangaName string) ([]Manga, error) {
+func (foxManga *FoxManga) Search(mangaName string) ([]scraper.Manga, error) {
 	searchUrl := fmt.Sprintf("%s/search?name=%s", foxURL, mangaName)
-	doc, err := makeDocRequest(searchUrl)
-	results := []Manga{}
+	doc, err := scraper.MakeDocRequest(searchUrl)
+	results := []scraper.Manga{}
 	if err != nil {
 		return results, err
 	}
@@ -189,7 +190,7 @@ func (foxManga *FoxManga) Search(mangaName string) ([]Manga, error) {
 		if strings.Contains(strings.ToLower(s.AttrOr("title", "")), strings.ToLower(mangaName)) {
 			mid, _ := s.Attr("href")
 			mid = strings.TrimPrefix(mid, "/")
-			results = append(results, Manga{MangaName: s.AttrOr("title", mangaName), MangaID: mid})
+			results = append(results, scraper.Manga{MangaName: s.AttrOr("title", mangaName), MangaID: mid})
 		}
 	})
 

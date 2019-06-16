@@ -1,14 +1,15 @@
-package scraper
+package fanfox
 
 import (
 	"fmt"
+	"github.com/freddieptf/manga-scraper/pkg/scraper"
 	"net/url"
 	"strings"
 	"testing"
 )
 
 // return the results and the search query
-func getTestSearchResults(t *testing.T) (Manga, string) {
+func getTestSearchResults(t *testing.T) (scraper.Manga, string) {
 	testManga := "kengan"
 	foxSource := &FoxManga{}
 	results, err := foxSource.Search(testManga)
