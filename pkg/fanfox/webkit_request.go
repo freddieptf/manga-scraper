@@ -1,43 +1,18 @@
-package scraper
+package fanfox
 
 import (
-	"crypto/tls"
 	"fmt"
 	"github.com/freddieptf/go-webkit2/webkit2"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 	"golang.org/x/net/html"
-	"net/http"
 	"net/url"
 	"os"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
-
-var (
-	transport *http.Transport = &http.Transport{
-		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
-		ResponseHeaderTimeout: 20 * time.Second,
-	}
-	client *http.Client = &http.Client{Transport: transport, Timeout: 40 * time.Second}
-)
-
-func makeDocRequest(url string) (*goquery.Document, error) {
-	resp, err := client.Get(url)
-	if err != nil {
-		return &goquery.Document{}, err
-	}
-
-	doc, err := goquery.NewDocumentFromResponse(resp)
-	if err != nil {
-		return &goquery.Document{}, err
-	}
-
-	return doc, nil
-}
 
 func makeDocRequestWebKit(url string) (*goquery.Document, error) {
 	runtime.LockOSThread()

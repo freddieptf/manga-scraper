@@ -33,7 +33,7 @@ compile:
     stage: build
     script:
     # dynamically linked binary
-      - go build -tags gtk_3_18 -race -o $CI_PROJECT_DIR/manga-scraper ./cmd/gomanga-cli
+      - go build -tags gtk_3_18 -race -o $CI_PROJECT_DIR/manga-scraper ./cmd/scraper
     artifacts:
       paths:
         - manga-scraper
