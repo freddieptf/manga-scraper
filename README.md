@@ -6,11 +6,7 @@
 The general usage format is
 
 	./scraper --{source} --manga "manga name" chapters
-
-*example*
-
-	./scraper --mf "dokgo" 2
-
+	
 
 ##### Download chapters over a certain range
 
@@ -24,7 +20,7 @@ The general usage format is
 ##### Downloading volumes (only on mangafox)
 This will download volume 1 to 5 of dokgo
 
-	./scraper --mf --vlm "dokgo" 1-5
+	./scraper --mf --vlm --manga "dokgo" 1-5
 
 
 #### Need some quick Help?
