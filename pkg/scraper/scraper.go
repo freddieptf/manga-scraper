@@ -8,6 +8,8 @@ type ChapterPage struct {
 type Chapter struct {
 	MangaName    string
 	ChapterTitle string
+	ID           string
+	URL          string
 	VolumeTitle  string
 	SourceName   string
 	ChapterPages []ChapterPage
