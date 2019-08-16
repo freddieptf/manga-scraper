@@ -11,6 +11,7 @@ import (
 
 const (
 	mangaStreamURL = "https://readms.net"
+	sourceName     = "MangaStream"
 )
 
 type MangaStream struct{}
@@ -23,13 +24,10 @@ func getMangaStreamMangaList() ([]scraper.Manga, error) {
 	results := []scraper.Manga{}
 	doc.Find("table .table, .table-striped tr > td > strong > a").Each(func(i int, s *goquery.Selection) {
 		mangaID := s.AttrOr("href", "none")
-		if mangaID != "none" {
-			mangaID = fmt.Sprintf("%s%s", mangaStreamURL, mangaID)
-		}
 		results = append(results,
 			scraper.Manga{
 				MangaName: s.Text(),
-				MangaID:   mangaID,
+				MangaID:   strings.TrimPrefix(mangaID, "/manga/"),
 			})
 	})
 
@@ -51,7 +49,7 @@ func seachMangaList(mangaName string) ([]scraper.Manga, error) {
 }
 
 func getMangaChapterList(mangaID string) ([]scraper.Chapter, error) {
-	doc, err := scraper.MakeDocRequest(mangaID)
+	doc, err := scraper.MakeDocRequest(fmt.Sprintf("%s/manga/%s", mangaStreamURL, mangaID))
 	if err != nil {
 		return []scraper.Chapter{}, err
 	}
@@ -68,7 +66,7 @@ func getMangaChapterList(mangaID string) ([]scraper.Chapter, error) {
 		chapters = append(chapters, scraper.Chapter{
 			MangaName:    strings.Trim(mangaName, " \n"),
 			ChapterTitle: strings.Trim(s.Text(), " "),
-			SourceName:   "MangaStream",
+			SourceName:   sourceName,
 			URL:          chURL,
 			ID:           chID,
 		})
@@ -109,8 +107,20 @@ func getImgURLFromChapterPage(chapterPageURL string) (string, error) {
 	return fmt.Sprintf("https:%s", imgURL), nil
 }
 
+func (*MangaStream) Name() string {
+	return sourceName
+}
+
+func (*MangaStream) ListMangaDirectory() ([]scraper.Manga, error) {
+	return getMangaStreamMangaList()
+}
+
 func (*MangaStream) Search(mangaName string) ([]scraper.Manga, error) {
 	return seachMangaList(mangaName)
+}
+
+func (*MangaStream) ListMangaChapters(mangaID string) ([]scraper.Chapter, error) {
+	return getMangaChapterList(mangaID)
 }
 
 func (*MangaStream) GetChapter(mangaID, chapterID string) (scraper.Chapter, error) {

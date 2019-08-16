@@ -1,21 +1,21 @@
 package scraper
 
 type ChapterPage struct {
-	Page int
-	Url  string
+	Page int    `json:"page"`
+	Url  string `json:"url"`
 }
 
 type Chapter struct {
-	MangaName    string
-	ChapterTitle string
-	ID           string
-	URL          string
-	VolumeTitle  string
-	SourceName   string
-	ChapterPages []ChapterPage
+	ID           string        `json:"id"`
+	ChapterTitle string        `json:"title"`
+	URL          string        `json:"url"`
+	MangaName    string        `json:"manga"`
+	VolumeTitle  string        `json:"volume,omitEmpty"`
+	SourceName   string        `json:"-"`
+	ChapterPages []ChapterPage `json:"pages,omitEmpty"`
 }
 
 type Manga struct {
-	MangaName string
-	MangaID   string
+	MangaName string `json:"name"`
+	MangaID   string `json:"id"`
 }
