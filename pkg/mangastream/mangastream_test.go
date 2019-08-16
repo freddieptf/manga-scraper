@@ -20,7 +20,7 @@ func TestGetMangaStreamMangaList(t *testing.T) {
 		t.Error("mangalist was empty")
 	}
 	for _, manga := range mangaList {
-		if _, err := url.ParseRequestURI(manga.MangaID); err != nil {
+		if manga.MangaID == "" || manga.MangaID == "none" {
 			t.Errorf("mangaID %s was invalid", manga.MangaID)
 		}
 	}
