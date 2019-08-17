@@ -1,4 +1,4 @@
-image: registry.gitlab.com/freddieptf/go-ubuntu-image:xenial
+image: registry.gitlab.com/freddieptf/go-ubuntu-image:latest
 
 variables:
   REPO_NAME: github.com/freddieptf/manga-scraper
