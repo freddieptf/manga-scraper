@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/freddieptf/manga-scraper/pkg/mangareader"
 	"github.com/freddieptf/manga-scraper/pkg/mangastream"
 	"github.com/freddieptf/manga-scraper/pkg/scraper"
 	"github.com/go-chi/chi"
@@ -18,7 +19,7 @@ type MangaSource interface {
 
 func GetMangaSources() []MangaSource {
 	sources := []MangaSource{}
-	sources = append(sources, &mangastream.MangaStream{})
+	sources = append(sources, &mangastream.MangaStream{}, &mangareader.ReaderManga{})
 	return sources
 }
 

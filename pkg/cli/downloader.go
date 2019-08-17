@@ -87,9 +87,9 @@ func createMangaSourceDir(sourceName string) (string, error) {
 func createChapterDir(sourceDirPath *string, chapter *chapter) (string, error) {
 	var chapterPath string
 	if chapter.VolumeTitle == "" {
-		chapterPath = filepath.Join(*sourceDirPath, chapter.MangaName, chapter.ChapterTitle)
+		chapterPath = filepath.Join(*sourceDirPath, chapter.MangaName, fmt.Sprintf("%s - %s", chapter.ID, chapter.ChapterTitle))
 	} else {
-		chapterPath = filepath.Join(*sourceDirPath, chapter.MangaName, chapter.VolumeTitle, chapter.ChapterTitle)
+		chapterPath = filepath.Join(*sourceDirPath, chapter.MangaName, chapter.VolumeTitle, fmt.Sprintf("%s - %s", chapter.ID, chapter.ChapterTitle))
 	}
 
 	err := os.MkdirAll(chapterPath, 0777)
