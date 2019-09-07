@@ -6,7 +6,7 @@ type ChapterPage struct {
 }
 
 type Chapter struct {
-	ID           string        `json:"id"`
+	ID           string        `json:"id"` // we should really just make this a float
 	ChapterTitle string        `json:"title"`
 	URL          string        `json:"url"`
 	MangaName    string        `json:"manga"`
