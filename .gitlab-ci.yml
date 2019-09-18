@@ -10,13 +10,10 @@ variables:
 # repository in /go/src/gitlab.com/namespace/project
 # Thus, making a symbolic link corrects this.
 before_script:
-  - apt-get update && apt-get install -y xvfb libwebkit2gtk-3.0-dev libjavascriptcoregtk-3.0-dev libgdk3.0-cil libpango1.0-0 fontconfig libgtk-3-dev libcairo2-dev libglib2.0-dev
-  - Xvfb :99 &
-  - export DISPLAY=:99
   - mkdir -p $GOPATH/src/$(dirname $REPO_NAME)
   - ln -svf $CI_PROJECT_DIR $GOPATH/src/$REPO_NAME
   - cd $GOPATH/src/$REPO_NAME
-  - go get -tags gtk_3_18 -v ./...
+  - go get -tags -v ./...
 
 stages:
     - test
@@ -26,14 +23,17 @@ format:
     stage: test
     script:
       - go fmt $(go list ./...)
-      - go vet -tags gtk_3_18 $(go list ./...)
-      - go test -tags gtk_3_18 -v -timeout 200s $(go list ./...)
+      - go vet -tags $(go list ./...)
+      - go test -tags -v -timeout 1800s $(go list ./...)
+    artifacts:
+      paths:
+        - $CI_PROJECT_DIR/mangadex-scraper-cache-test.txt
 
 compile:
     stage: build
     script:
     # dynamically linked binary
-      - go build -tags gtk_3_18 -race -o $CI_PROJECT_DIR/manga-scraper ./cmd/scraper
+      - go build -tags -race -o $CI_PROJECT_DIR/manga-scraper ./cmd/scraper
     artifacts:
       paths:
-        - manga-scraper
+        - $CI_PROJECT_DIR/manga-scraper

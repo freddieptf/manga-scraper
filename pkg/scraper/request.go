@@ -11,21 +11,25 @@ import (
 var (
 	transport *http.Transport = &http.Transport{
 		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
-		ResponseHeaderTimeout: 20 * time.Second,
+		ResponseHeaderTimeout: 40 * time.Second,
 	}
-	client *http.Client = &http.Client{Transport: transport, Timeout: 40 * time.Second}
+	client    *http.Client = &http.Client{Transport: transport, Timeout: 1 * time.Minute}
+	userAgent              = "Mozilla/5.0 (X11; Linux x86_64; rv:66.0) Gecko/20100101 Firefox/66.0"
 )
 
+func MakeRequest(url string) (*http.Response, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", userAgent)
+	return client.Do(req)
+}
+
 func MakeDocRequest(url string) (*goquery.Document, error) {
-	resp, err := client.Get(url)
+	resp, err := MakeRequest(url)
 	if err != nil {
-		return &goquery.Document{}, err
+		return nil, err
 	}
-
-	doc, err := goquery.NewDocumentFromResponse(resp)
-	if err != nil {
-		return &goquery.Document{}, err
-	}
-
-	return doc, nil
+	return goquery.NewDocumentFromResponse(resp)
 }
