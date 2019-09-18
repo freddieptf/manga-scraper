@@ -13,7 +13,7 @@ before_script:
   - mkdir -p $GOPATH/src/$(dirname $REPO_NAME)
   - ln -svf $CI_PROJECT_DIR $GOPATH/src/$REPO_NAME
   - cd $GOPATH/src/$REPO_NAME
-  - go get -tags -v ./...
+  - go get -v ./...
 
 stages:
     - test
@@ -23,17 +23,19 @@ format:
     stage: test
     script:
       - go fmt $(go list ./...)
-      - go vet -tags $(go list ./...)
-      - go test -tags -v -timeout 1800s $(go list ./...)
-    artifacts:
-      paths:
-        - $CI_PROJECT_DIR/mangadex-scraper-cache-test.txt
-
+      - go vet $(go list ./...)
+      - go test -v -timeout 150s $(go list ./...)
+  
 compile:
     stage: build
     script:
-    # dynamically linked binary
-      - go build -tags -race -o $CI_PROJECT_DIR/manga-scraper ./cmd/scraper
+      - go build -race -o $CI_PROJECT_DIR/manga-scraper ./cmd/scraper
+      - go build -race -o $CI_PROJECT_DIR/mangadex ./cmd/mangadex
+      - go build -race -o $CI_PROJECT_DIR/mangareader ./cmd/mangareader
+      - go build -race -o $CI_PROJECT_DIR/mangastream ./cmd/mangastream
     artifacts:
       paths:
         - $CI_PROJECT_DIR/manga-scraper
+        - $CI_PROJECT_DIR/mangadex
+        - $CI_PROJECT_DIR/mangareader
+        - $CI_PROJECT_DIR/mangastream
