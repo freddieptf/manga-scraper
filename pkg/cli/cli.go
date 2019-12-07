@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"github.com/freddieptf/manga-scraper/pkg/libmgr"
 	"log"
@@ -8,7 +9,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 
 	scraper "github.com/freddieptf/manga-scraper/pkg/scraper"
 )
@@ -21,17 +21,14 @@ type MangaSource interface {
 }
 
 func Get(n int, mangaName string, chapters *[]int, archive *bool, source MangaSource) {
-
 	results, err := source.Search(mangaName)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	result := GetMatchFromSearchResults(ReadWrite{os.Stdin, os.Stdout}, results)
 
-	downloadJobChan := make(chan chapter, n)
-	var wg sync.WaitGroup
-	startDownloads(n, &wg, &downloadJobChan)
+	downloader := initDownloader(context.TODO(), n)
+	downloader.initWorkers()
 
 	for _, chID := range *chapters {
 		ch, err := source.GetChapter(result.MangaID, strconv.Itoa(chID))
@@ -39,13 +36,11 @@ func Get(n int, mangaName string, chapters *[]int, archive *bool, source MangaSo
 			log.Printf("err: owwie %s\n", err)
 		} else {
 			ch.MangaName = result.MangaName
-			chWrap := chapter{Chapter: ch, archive: *archive}
-			downloadJobChan <- chWrap
-			wg.Add(1)
+			downloader.queueDownload(&ch, *archive)
 		}
 	}
 
-	wg.Wait()
+	downloader.waitTillQueueEmptyAndExit()
 }
 
 func UpdateSourceManga(source libmgr.SourceLibProvider, manga string, n int, archive bool) {
@@ -57,9 +52,8 @@ func UpdateSourceLibrary(source libmgr.SourceLibProvider, n int, archive bool) {
 }
 
 func update(source libmgr.SourceLibProvider, mangaName string, n int, archive bool) {
-	downloadJobChan := make(chan chapter, n)
-	var wg sync.WaitGroup
-	startDownloads(n, &wg, &downloadJobChan)
+	downloader := initDownloader(context.TODO(), n)
+	downloader.initWorkers()
 
 	fsProvider := &LocalFSLibProvider{libraryRootPath: filepath.Join(os.Getenv("HOME"), "Manga")}
 	libManager := &libmgr.LibraryManager{}
@@ -74,9 +68,7 @@ func update(source libmgr.SourceLibProvider, mangaName string, n int, archive bo
 					log.Printf("err: owwie %s\n", err)
 				} else {
 					ch.MangaName = manga.MangaName
-					chWrap := chapter{Chapter: ch, archive: archive}
-					downloadJobChan <- chWrap
-					wg.Add(1)
+					downloader.queueDownload(&ch, archive)
 				}
 			}
 		}
@@ -101,10 +93,10 @@ func update(source libmgr.SourceLibProvider, mangaName string, n int, archive bo
 				log.Printf("err: owwie %s\n", err)
 			} else {
 				ch.MangaName = manga.MangaName
-				chWrap := chapter{Chapter: ch, archive: archive}
-				downloadJobChan <- chWrap
-				wg.Add(1)
+				downloader.queueDownload(&ch, archive)
 			}
 		}
 	}
+
+	downloader.waitTillQueueEmptyAndExit()
 }
