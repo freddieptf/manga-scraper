@@ -97,7 +97,7 @@ func (downloader *Downloader) initWorkers() {
 	}
 	go func() {
 		for status := range downloader.jobResultChan {
-			if *downloader.queueSizeChangeChan != nil {
+			if downloader.queueSizeChangeChan != nil {
 				*downloader.queueSizeChangeChan <- downloader.getQueueCounter()
 			}
 			if status.downloadComplete {
