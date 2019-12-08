@@ -19,13 +19,13 @@ func main() {
 	getCmdFlagSet := flag.NewFlagSet("get", flag.ExitOnError)
 	getCmdFlagSet.StringVar(&manga, "manga", "", "manga name")
 	getCmdFlagSet.IntVar(&maxActiveDownloads, "n", 1, "max number of parallel downloads")
-	getCmdFlagSet.BoolVar(&archive, "cbz", true, "save as cbz file format")
+	getCmdFlagSet.BoolVar(&archive, "cbz", false, "save as cbz file format")
 
 	updateCmdFlagSet := flag.NewFlagSet("update", flag.ExitOnError)
 	updateCmdFlagSet.StringVar(&manga, "manga", "", "update this manga")
 	updateAll := updateCmdFlagSet.Bool("all", false, "update all")
 	updateCmdFlagSet.IntVar(&maxActiveDownloads, "n", 1, "max number of parallel downloads")
-	updateCmdFlagSet.BoolVar(&archive, "cbz", true, "save as cbz file format")
+	updateCmdFlagSet.BoolVar(&archive, "cbz", false, "save as cbz file format")
 
 	osArgs := os.Args
 	if len(osArgs) <= 1 {

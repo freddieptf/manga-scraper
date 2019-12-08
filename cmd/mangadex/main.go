@@ -27,13 +27,13 @@ func main() {
 	getCmdFlagSet.StringVar(&manga, "manga", "", "manga name")
 	getCmdFlagSet.StringVar(&cacheFilePath, "cache", filepath.Join(os.Getenv("HOME"), ".mangadex-cache.txt"), "path of the cache file")
 	getCmdFlagSet.IntVar(&maxActiveDownloads, "n", 1, "max number of parallel downloads")
-	getCmdFlagSet.BoolVar(&archive, "cbz", true, "save as cbz file format")
+	getCmdFlagSet.BoolVar(&archive, "cbz", false, "save as cbz file format")
 
 	updateCmdFlagSet := flag.NewFlagSet("update", flag.ExitOnError)
 	updateCmdFlagSet.StringVar(&manga, "manga", "", "update this manga")
 	updateAll := updateCmdFlagSet.Bool("all", false, "update all")
 	updateCmdFlagSet.IntVar(&maxActiveDownloads, "n", 1, "max number of parallel downloads")
-	updateCmdFlagSet.BoolVar(&archive, "cbz", true, "save as cbz file format")
+	updateCmdFlagSet.BoolVar(&archive, "cbz", false, "save as cbz file format")
 
 	osArgs := os.Args
 	if len(osArgs) <= 1 {
