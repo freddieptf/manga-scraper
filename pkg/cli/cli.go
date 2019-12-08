@@ -33,7 +33,7 @@ func Get(n int, mangaName string, chapters *[]int, archive *bool, source MangaSo
 	for _, chID := range *chapters {
 		ch, err := source.GetChapter(result.MangaID, strconv.Itoa(chID))
 		if err != nil {
-			log.Printf("err: owwie %s\n", err)
+			log.Printf("getChapter %d, err: %v\n", chID, err)
 		} else {
 			ch.MangaName = result.MangaName
 			downloader.queueDownload(&ch, *archive)
