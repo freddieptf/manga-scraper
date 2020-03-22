@@ -29,13 +29,10 @@ format:
 compile:
     stage: build
     script:
-      - go build -race -o $CI_PROJECT_DIR/manga-scraper ./cmd/scraper
-      - go build -race -o $CI_PROJECT_DIR/mangadex ./cmd/mangadex
-      - go build -race -o $CI_PROJECT_DIR/mangareader ./cmd/mangareader
-      - go build -race -o $CI_PROJECT_DIR/mangastream ./cmd/mangastream
+      - env GOOS=linux GOARCH=amd64 go build -race -o $CI_PROJECT_DIR/mangadex-$GOOS-$GOARCH ./cmd/mangadex
+      - env GOOS=darwin GOARCH=amd64 go build -race -o $CI_PROJECT_DIR/mangadex-$GOOS-$GOARCH ./cmd/mangadex
+      - env GOOS=linux GOARCH=amd64 go build -race -o $CI_PROJECT_DIR/mangareader-$GOOS-$GOARCH ./cmd/mangareader
+      - env GOOS=darwin GOARCH=amd64 go build -race -o $CI_PROJECT_DIR/mangareader-$GOOS-$GOARCH ./cmd/mangareader
     artifacts:
       paths:
-        - $CI_PROJECT_DIR/manga-scraper
-        - $CI_PROJECT_DIR/mangadex
-        - $CI_PROJECT_DIR/mangareader
-        - $CI_PROJECT_DIR/mangastream
+        - $CI_PROJECT_DIR/*
