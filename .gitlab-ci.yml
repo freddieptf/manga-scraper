@@ -13,7 +13,6 @@ before_script:
   - mkdir -p $GOPATH/src/$(dirname $REPO_NAME)
   - ln -svf $CI_PROJECT_DIR $GOPATH/src/$REPO_NAME
   - cd $GOPATH/src/$REPO_NAME
-  - export CGO_ENABLED=1
   - go get -v ./...
 
 stages:
@@ -25,15 +24,15 @@ format:
     script:
       - go fmt $(go list ./...)
       - go vet $(go list ./...)
-      - go test -v -timeout 150s $(go list ./...)
+      - go test -v -timeout 150s -race $(go list ./...)
   
 compile:
     stage: build
     script:
-      - env GOOS=linux GOARCH=amd64 go build -race -o $CI_PROJECT_DIR/mangadex-$GOOS-$GOARCH ./cmd/mangadex
-      - env GOOS=darwin GOARCH=amd64 go build -race -o $CI_PROJECT_DIR/mangadex-$GOOS-$GOARCH ./cmd/mangadex
-      - env GOOS=linux GOARCH=amd64 go build -race -o $CI_PROJECT_DIR/mangareader-$GOOS-$GOARCH ./cmd/mangareader
-      - env GOOS=darwin GOARCH=amd64 go build -race -o $CI_PROJECT_DIR/mangareader-$GOOS-$GOARCH ./cmd/mangareader
+      - os=linux arch=amd64; env GOOS=$os GOARCH=$arch go build -o $CI_PROJECT_DIR/mangadex-$os-$arch ./cmd/mangadex
+      - os=darwin arch=amd64; env GOOS=$os GOARCH=$arch go build -o $CI_PROJECT_DIR/mangadex-$os-$arch ./cmd/mangadex
+      - os=linux arch=amd64; env GOOS=$os GOARCH=$arch go build -o $CI_PROJECT_DIR/mangareader-$os-$arch ./cmd/mangareader
+      - os=darwin arch=amd64; env GOOS=$os GOARCH=$arch go build -o $CI_PROJECT_DIR/mangareader-$os-$arch ./cmd/mangareader
     artifacts:
       paths:
         - $CI_PROJECT_DIR/*
