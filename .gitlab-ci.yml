@@ -29,10 +29,10 @@ format:
 compile:
     stage: build
     script:
-      - os=linux arch=amd64; env GOOS=$os GOARCH=$arch go build -o $CI_PROJECT_DIR/mangadex-$os-$arch ./cmd/mangadex
-      - os=darwin arch=amd64; env GOOS=$os GOARCH=$arch go build -o $CI_PROJECT_DIR/mangadex-$os-$arch ./cmd/mangadex
-      - os=linux arch=amd64; env GOOS=$os GOARCH=$arch go build -o $CI_PROJECT_DIR/mangareader-$os-$arch ./cmd/mangareader
-      - os=darwin arch=amd64; env GOOS=$os GOARCH=$arch go build -o $CI_PROJECT_DIR/mangareader-$os-$arch ./cmd/mangareader
+      - os=linux arch=amd64; env GOOS=$os GOARCH=$arch go build -o $CI_PROJECT_DIR/build/mangadex-$os-$arch ./cmd/mangadex
+      - os=darwin arch=amd64; env GOOS=$os GOARCH=$arch go build -o $CI_PROJECT_DIR/build/mangadex-$os-$arch ./cmd/mangadex
+      - os=linux arch=amd64; env GOOS=$os GOARCH=$arch go build -o $CI_PROJECT_DIR/build/mangareader-$os-$arch ./cmd/mangareader
+      - os=darwin arch=amd64; env GOOS=$os GOARCH=$arch go build -o $CI_PROJECT_DIR/build/mangareader-$os-$arch ./cmd/mangareader
     artifacts:
       paths:
-        - $CI_PROJECT_DIR/*
+        - $CI_PROJECT_DIR/build/*
