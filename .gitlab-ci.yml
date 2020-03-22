@@ -1,4 +1,4 @@
-image: registry.gitlab.com/freddieptf/go-ubuntu-image:latest
+image: golang:1.14-buster
 
 variables:
   REPO_NAME: github.com/freddieptf/manga-scraper
