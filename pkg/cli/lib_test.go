@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"github.com/freddieptf/manga-scraper/pkg/mangareader"
-	"github.com/freddieptf/manga-scraper/pkg/mangastream"
 	"github.com/freddieptf/manga-scraper/pkg/scraper"
 	"math/rand"
 	"os"
@@ -24,9 +23,7 @@ func setUpEmptyTestLib(t *testing.T) (string, map[MangaSource][]scraper.Manga) {
 		t.Fatal(err)
 	}
 	sources := make(map[string]MangaSource)
-	mangaStream := &mangastream.MangaStream{}
 	mangaReader := &mangareader.ReaderManga{}
-	sources[mangaStream.Name()] = mangaStream
 	sources[mangaReader.Name()] = mangaReader
 	for key, source := range sources {
 		mangaPath := filepath.Join(TEST_DIR_PATH, source.Name(), key)
@@ -44,7 +41,6 @@ func setUpEmptyTestLib(t *testing.T) (string, map[MangaSource][]scraper.Manga) {
 		}
 	}
 	return TEST_DIR_PATH, map[MangaSource][]scraper.Manga{
-		mangaStream: []scraper.Manga{scraper.Manga{MangaName: mangaStream.Name()}},
 		mangaReader: []scraper.Manga{scraper.Manga{MangaName: mangaReader.Name()}},
 	}
 }

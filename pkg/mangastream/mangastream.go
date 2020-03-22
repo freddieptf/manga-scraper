@@ -1,3 +1,5 @@
+// +build deadsource
+
 package mangastream
 
 import (

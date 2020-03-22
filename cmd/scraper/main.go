@@ -5,13 +5,11 @@ import (
 	"fmt"
 	cli "github.com/freddieptf/manga-scraper/pkg/cli"
 	"github.com/freddieptf/manga-scraper/pkg/mangareader"
-	"github.com/freddieptf/manga-scraper/pkg/mangastream"
 	"os"
 )
 
 var (
 	readerFlag         = flag.Bool("mr", false, "search mangaReader for the manga")
-	mangastreamFlag    = flag.Bool("ms", false, "search mangastream for the manga")
 	update             = flag.Bool("update", false, "use to update the manga in your local library to the latest chapter")
 	archive            = flag.Bool("cbz", true, "save to cbz file format")
 	maxActiveDownloads = flag.Int("n", 1, "max number of concurrent downloads")
@@ -22,7 +20,7 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 
-	if !*readerFlag && !*mangastreamFlag {
+	if !*readerFlag {
 		fmt.Println("No source was provided.")
 		flag.PrintDefaults()
 		os.Exit(1)
@@ -37,8 +35,7 @@ func main() {
 			n = *maxActiveDownloads
 		}
 		source = &mangareader.ReaderManga{}
-	case *mangastreamFlag:
-		source = &mangastream.MangaStream{}
+	// TODO: add mangadex here...
 	default:
 		flag.PrintDefaults()
 		return

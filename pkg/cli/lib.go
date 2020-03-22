@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/freddieptf/manga-scraper/pkg/libmgr"
 	"github.com/freddieptf/manga-scraper/pkg/mangareader"
-	"github.com/freddieptf/manga-scraper/pkg/mangastream"
 	"github.com/freddieptf/manga-scraper/pkg/scraper"
 	"log"
 	"os"
@@ -20,9 +19,7 @@ type LocalFSLibProvider struct {
 
 func getMangaSources() map[string]libmgr.SourceLibProvider {
 	sources := make(map[string]libmgr.SourceLibProvider)
-	mangaStream := &mangastream.MangaStream{}
 	mangaReader := &mangareader.ReaderManga{}
-	sources[mangaStream.Name()] = mangaStream
 	sources[mangaReader.Name()] = mangaReader
 	return sources
 }
